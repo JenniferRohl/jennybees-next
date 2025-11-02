@@ -5,12 +5,15 @@ import * as React from "react";
 type Ratio = "9/16" | "16/9" | "1/1";
 
 type Props = {
-  url: string;                   // Facebook Page or Post URL
+  /** Facebook Page URL (for timeline) or Post URL (for post) */
+  url: string;
+  /** Show a page timeline or a specific post */
   kind?: "timeline" | "post";
-  ratio?: Ratio;                 // keeps visual height consistent with TikTok
+  /** Keeps height consistent with other embeds */
+  ratio?: Ratio;
   className?: string;
-  maxWidth?: number;             // optional clamp
-  minWidth?: number;             // optional clamp
+  maxWidth?: number;
+  minWidth?: number;
 };
 
 const RATIO_NUMS: Record<Ratio, [number, number]> = {
@@ -37,55 +40,40 @@ export default function FacebookEmbed({
       div.id = "fb-root";
       document.body.appendChild(div);
     }
-    if (!document.getElementById("facebook-jssdk")) {
-      const s = document.createElement("script");
-      s.id = "facebook-jssdk";
-      s.async = true;
-      s.defer = true;
-      s.crossOrigin = "anonymous";
-      s.src = "https://connect.facebook.net/en_US/sdk.js#xfbml=1&version=v18.0";
-      document.body.appendChild(s);
+    const hasSDK = !!document.querySelector('script[src*="connect.facebook.net"]');
+    if (!hasSDK) {
+      const script = document.createElement("script");
+      script.async = true;
+      script.defer = true;
+      script.crossOrigin = "anonymous";
+      script.src = "https://connect.facebook.net/en_US/sdk.js#xfbml=1&version=v21.0";
+      document.body.appendChild(script);
+      script.onload = () => {
+        // @ts-expect-error FB is injected by the SDK
+        if (window.FB && wrapperRef.current) window.FB.XFBML.parse(wrapperRef.current);
+      };
     } else {
-      // If already loaded, parse later after we set height
-      setTimeout(() => (window as any)?.FB?.XFBML?.parse?.(), 0);
+      // @ts-expect-error FB is injected by the SDK
+      if (window.FB && wrapperRef.current) window.FB.XFBML.parse(wrapperRef.current);
     }
   }, []);
 
-  // Keep a responsive height based on wrapper width and desired ratio
+  // Maintain an aspect-ratio style height
   React.useEffect(() => {
-    if (!wrapperRef.current) return;
-
-    const [wNum, hNum] = RATIO_NUMS[ratio];
-    const ro = new ResizeObserver((entries) => {
-      const entry = entries[0];
-      const width = entry.contentRect.width;
-      if (!width) return;
-      const h = Math.max(300, Math.round((hNum / wNum) * width)); // min 300px for FB Page plugin
-      setHeightPx(h);
-      // Re-parse after size changes to let FB recalc iframes
-      setTimeout(() => (window as any)?.FB?.XFBML?.parse?.(wrapperRef.current), 0);
-    });
-
-    ro.observe(wrapperRef.current);
+    const [w, h] = RATIO_NUMS[ratio];
+    const compute = () => {
+      const el = wrapperRef.current;
+      const width = Math.max(minWidth, Math.min(maxWidth, el?.clientWidth ?? maxWidth));
+      setHeightPx(Math.round((width * h) / w));
+    };
+    compute();
+    const ro = new ResizeObserver(compute);
+    if (wrapperRef.current) ro.observe(wrapperRef.current);
     return () => ro.disconnect();
-  }, [ratio]);
-
-  // Reparse when URL or kind changes
-  React.useEffect(() => {
-    setTimeout(() => (window as any)?.FB?.XFBML?.parse?.(wrapperRef.current), 0);
-  }, [url, kind]);
+  }, [ratio, maxWidth, minWidth]);
 
   return (
-    <div
-      ref={wrapperRef}
-      className={className}
-      style={{
-        height: heightPx,
-        overflow: "hidden",
-        borderRadius: 16,
-        background: "#fff",
-      }}
-    >
+    <div ref={wrapperRef} className={className} style={{ width: "100%" }}>
       {kind === "timeline" ? (
         <div
           className="fb-page"
@@ -94,8 +82,7 @@ export default function FacebookEmbed({
           data-adapt-container-width="true"
           data-hide-cover="false"
           data-show-facepile="true"
-          // Facebook requires a pixel value, so we pass our responsive height
-          data-height={heightPx}
+          data-width="auto"
           style={{ width: "100%", maxWidth, minWidth, height: heightPx }}
         >
           <blockquote cite={url} className="fb-xfbml-parse-ignore">
