@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { useSearchParams } from "next/navigation";
-import { useCart } from "./cart/CartContext";
-import CartDrawer from "./cart/CartDrawer";
+import { useCart } from "./cart/CartContext";          // ← fixed path
+import CartDrawer from "./cart/CartDrawer";            // ← fixed path
 import TikTokEmbed from "./TikTokEmbed";
 import FacebookEmbed from "./FacebookEmbed";
 
@@ -128,6 +128,31 @@ export default function JennyBeesCreation() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  /** Load from Vercel KV once on mount (merges over defaults/local preview) */
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/admin/config", { cache: "no-store" });
+        if (!res.ok) return;
+        const json = await res.json();
+        const data = json?.data as Partial<Config> | null;
+        if (!cancelled && data) {
+          const merged = {
+            ...defaultConfig,
+            ...data,
+            hidden: { ...defaultConfig.hidden, ...(data.hidden || {}) },
+          } as Config;
+          merged.products = withStableIds(merged.products || []);
+          merged.heroDecor = { ...defaultConfig.heroDecor, ...(data as any).heroDecor };
+          setCfg(merged);
+          try { window.localStorage.setItem(STORAGE_KEY, JSON.stringify(merged)); } catch {}
+        }
+      } catch {}
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   /** Cross-tab live sync */
   React.useEffect(() => {
     const onStorage = (e: StorageEvent) => {
@@ -152,13 +177,24 @@ export default function JennyBeesCreation() {
     }, 250);
   }, []);
 
-  /** Save (instant) */
-  const saveCfg = React.useCallback((next?: Config) => {
+  /** Save (localStorage + KV) */
+  const saveCfg = React.useCallback(async (next?: Config) => {
     const merged = next || cfg;
+    try { window.localStorage.setItem(STORAGE_KEY, JSON.stringify(merged)); } catch {}
+    setCfg(merged);
+
     try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
-      setCfg(merged);
-      alert("Saved ✔");
+      const res = await fetch("/api/admin/config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(merged),
+      });
+      if (!res.ok) {
+        const t = await res.text();
+        alert("Save failed: " + t);
+        return;
+      }
+      alert("Saved ✔ (synced to KV)");
     } catch (e: any) {
       alert("Save failed: " + (e?.message || e));
     }
@@ -323,7 +359,8 @@ export default function JennyBeesCreation() {
     );
   }
 
-  const SectionShop = React.memo(() => (
+  /** Fix: use a base FC, then memo the component */
+  const SectionShopBase: React.FC = () => (
     <section id="shop" className="max-w-6xl mx-auto px-4 py-16">
       <div className="flex items-end justify-between mb-8">
         <div>
@@ -374,7 +411,8 @@ export default function JennyBeesCreation() {
         *Candles are 8oz / ~45hr burn • 16oz 3-wick available.
       </div>
     </section>
-  ));
+  );
+  const SectionShop = React.memo(SectionShopBase);
 
   function SectionAbout() {
     return (
@@ -498,7 +536,7 @@ export default function JennyBeesCreation() {
   }
 
   /** ===== Section map ===== */
-  const SectionMap: Record<SectionId, () => JSX.Element> = {
+  const SectionMap: Record<SectionId, React.ComponentType> = {
     hero: SectionHero,
     shop: SectionShop,
     about: SectionAbout,
@@ -524,7 +562,6 @@ export default function JennyBeesCreation() {
                   className={`px-2 py-1 rounded text-sm ${
                     activeSection === id ? "bg-neutral-900 text-white" : "bg-neutral-100"
                   }`}
-                  onMouseDown={(e) => e.preventDefault()}
                   onClick={() => setActiveSection(id)}
                   type="button"
                 >
@@ -548,7 +585,6 @@ export default function JennyBeesCreation() {
             <button
               className="mt-3 px-3 py-2 rounded border"
               style={{ borderColor: "#e5e5e5" }}
-              onMouseDown={(e) => e.preventDefault()}
               onClick={() => {
                 window.localStorage.removeItem(STORAGE_KEY);
                 setCfg({ ...defaultConfig, products: withStableIds(defaultConfig.products) });
@@ -729,7 +765,6 @@ export default function JennyBeesCreation() {
                   <button
                     className="px-3 py-2 rounded border text-sm"
                     style={{ borderColor: "#e5e5e5" }}
-                    onMouseDown={(e) => e.preventDefault()}
                     onClick={addProduct}
                     type="button"
                   >
@@ -814,7 +849,6 @@ export default function JennyBeesCreation() {
                       <button
                         className="px-2 py-1 text-xs rounded border text-red-600"
                         style={{ borderColor: "#e5e5e5" }}
-                        onMouseDown={(e) => e.preventDefault()}
                         onClick={() => removeProduct(i)}
                         type="button"
                       >
@@ -828,7 +862,6 @@ export default function JennyBeesCreation() {
                   <button
                     className="px-3 py-2 rounded text-white"
                     style={{ background: theme.black }}
-                    onMouseDown={(e) => e.preventDefault()}
                     onClick={() => saveCfg()}
                   >
                     Save changes
@@ -836,7 +869,6 @@ export default function JennyBeesCreation() {
                   <button
                     className="px-3 py-2 rounded border"
                     style={{ borderColor: "#e5e5e5" }}
-                    onMouseDown={(e) => e.preventDefault()}
                     onClick={() => setCfg({ ...defaultConfig, products: withStableIds(defaultConfig.products) })}
                   >
                     Discard
