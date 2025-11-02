@@ -2,8 +2,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  experimental: { turbo: {} },
-
+  
   async headers() {
     const csp = [
       "default-src 'self'",
