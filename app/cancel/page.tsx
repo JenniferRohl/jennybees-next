@@ -1,0 +1,1 @@
+export default function Cancel(){return <div className='p-8 text-center'>❌ Payment canceled. You can continue shopping.</div>}

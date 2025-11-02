@@ -1,0 +1,18 @@
+# Dependencies & build
+node_modules/
+.next/
+.turbo/
+.vercel/
+dist/
+out/
+build/
+
+# Env / local
+.env
+.env.*
+*.local
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/

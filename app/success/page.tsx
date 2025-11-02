@@ -1,0 +1,1 @@
+export default function Success(){return <div className='p-8 text-center'>✅ Payment successful. Thank you!</div>}

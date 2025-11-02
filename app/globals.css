@@ -1,0 +1,36 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body {
+  height: 100%;
+}
+
+:root {
+  --rose: #b76e79;
+  --cream: #fffaf3;
+  --black: #111111;
+  --white: #ffffff;
+}
+
+body {
+  background: var(--cream);
+  color: var(--black);
+}
+.jb-tiktok .tiktok-embed {
+  max-width: none !important;
+  min-width: 0 !important;
+}
+.jb-tiktok .tiktok-embed iframe,
+.jb-tiktok .tiktok-embed > * {
+  width: 100% !important;
+  height: 100% !important;
+}
+.jb-tiktok * {
+  scrollbar-width: none;
+}
+.jb-tiktok ::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
