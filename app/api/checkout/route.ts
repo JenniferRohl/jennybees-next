@@ -1,87 +1,72 @@
-import Stripe from 'stripe';
-import { NextResponse } from 'next/server';
+// app/api/checkout/route.ts
+import Stripe from "stripe";
+import { NextResponse } from "next/server";
 
-// ✅ Ensure this runs on the Node.js runtime, not Edge
-export const runtime = 'nodejs';
+export const runtime = "nodejs";       // Stripe SDK needs Node, not Edge
+export const dynamic = "force-dynamic";
 
-type LineItem = {
-  price_data: {
-    currency: 'usd';
-    product_data: { name: string; images?: string[] };
-    unit_amount: number; // cents, integer
-  };
-  quantity: number;
-};
+const STRIPE_KEY = process.env.STRIPE_SECRET_KEY ?? "";
+const stripe = new Stripe(STRIPE_KEY, { apiVersion: "2024-06-20" });
 
+// Accepts either [{priceId, quantity}] OR [{name, unit_amount, quantity}]
 export async function POST(req: Request) {
   try {
-    // 1) Env guard
-    const secret = process.env.STRIPE_SECRET_KEY;
-    if (!secret) {
-      console.error('[checkout] Missing STRIPE_SECRET_KEY');
-      return NextResponse.json({ error: 'Missing STRIPE_SECRET_KEY' }, { status: 500 });
+    if (!STRIPE_KEY) {
+      return NextResponse.json(
+        { ok: false, error: "Missing STRIPE_SECRET_KEY" },
+        { status: 500 }
+      );
     }
 
-    // 2) Parse & validate body
-    const body = (await req.json()) as { line_items?: LineItem[] };
-    if (!body?.line_items || !Array.isArray(body.line_items) || body.line_items.length === 0) {
-      console.error('[checkout] Invalid body:', body);
-      return NextResponse.json({ error: 'Invalid body: line_items[] required' }, { status: 400 });
+    const body = await req.json().catch(() => ({}));
+    const items = Array.isArray(body?.items) ? body.items : [];
+    if (!items.length) {
+      return NextResponse.json(
+        { ok: false, error: "No items provided" },
+        { status: 400 }
+      );
     }
 
-    // Validate each item (unit_amount must be integer)
-    for (const li of body.line_items) {
-      if (
-        !li?.price_data?.product_data?.name ||
-        typeof li.price_data.unit_amount !== 'number' ||
-        !Number.isInteger(li.price_data.unit_amount) ||
-        li.price_data.unit_amount <= 0 ||
-        typeof li.quantity !== 'number' ||
-        li.quantity <= 0
-      ) {
-        console.error('[checkout] Bad line item:', li);
-        return NextResponse.json({ error: 'Invalid line item' }, { status: 400 });
-      }
-    }
+    // Build absolute site URL
+    const site =
+      process.env.NEXT_PUBLIC_SITE_URL ||
+      `https://${process.env.VERCEL_URL || "jennybeescreation.com"}`;
 
-    // 3) Figure out correct origin (localhost in dev)
-    const reqOrigin = req.headers.get('origin') ?? new URL(req.url).origin;
-    const origin = process.env.NEXT_PUBLIC_SITE_URL || reqOrigin;
+    const line_items =
+      items[0]?.priceId
+        ? items.map((it: any) => ({
+            price: String(it.priceId),
+            quantity: Number(it.quantity || 1),
+          }))
+        : items.map((it: any) => ({
+            price_data: {
+              currency: "usd",
+              unit_amount: Number(it.unit_amount), // cents
+              product_data: { name: String(it.name ?? "Item") },
+            },
+            quantity: Number(it.quantity || 1),
+          }));
 
-    // 4) Stripe client
-    const stripe = new Stripe(secret, { apiVersion: '2023-10-16' });
-    // 5) Create checkout session
     const session = await stripe.checkout.sessions.create({
-      mode: 'payment',
-      payment_method_types: ['card'],
-      line_items: body.line_items,
-      success_url: `${origin}/success`,
-      cancel_url: `${origin}/cancel`,
-      shipping_address_collection: { allowed_countries: ['US'] },
-      shipping_options: [
-        {
-          shipping_rate_data: {
-            type: 'fixed_amount',
-            fixed_amount: { amount: 599, currency: 'usd' },
-            display_name: 'Standard (3–5 days)',
-          },
-        },
-        {
-          shipping_rate_data: {
-            type: 'fixed_amount',
-            fixed_amount: { amount: 0, currency: 'usd' },
-            display_name: 'Free $35+ (Auto at Checkout)',
-          },
-        },
-      ],
+      mode: "payment",
+      line_items,
+      allow_promotion_codes: true,
+      billing_address_collection: "auto",
+      success_url: `${site}/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${site}/cancel`,
+      // shipping_address_collection: { allowed_countries: ["US"] },
     });
 
-    return NextResponse.json({ id: session.id, url: session.url });
-  } catch (e: any) {
-    // Surface the actual error to your terminal and to the client
-    console.error('[checkout] Server error:', e?.raw ?? e);
+    return NextResponse.json({ ok: true, url: session.url });
+  } catch (err: any) {
+    console.error("Checkout error:", err?.message, err);
     return NextResponse.json(
-      { error: e?.message || e?.raw?.message || 'Server error' },
+      {
+        ok: false,
+        error: err?.message ?? "Checkout failed",
+        type: err?.type,
+        code: err?.code,
+      },
       { status: 500 }
     );
   }
