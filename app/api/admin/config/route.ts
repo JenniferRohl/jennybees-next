@@ -1,6 +1,7 @@
 // app/api/admin/config/route.ts
 import { NextResponse } from "next/server";
-import { redis } from "@/lib/redis";
+import { redis } from "../../../../lib/redis";
+
 
 export const runtime = "edge";        // KV works great on edge
 export const dynamic = "force-dynamic";
