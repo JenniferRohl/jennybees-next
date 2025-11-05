@@ -1,6 +1,6 @@
 // app/api/admin/config/route.ts
 import { NextResponse } from "next/server";
-import { kv } from "@vercel/kv";
+import { redis } from "@/lib/redis";
 
 export const runtime = "edge";        // KV works great on edge
 export const dynamic = "force-dynamic";
@@ -19,7 +19,7 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    await kv.set(KEY, body);
+    await redis.set(KEY, body);
     return NextResponse.json({ ok: true });
   } catch (err: any) {
     return NextResponse.json({ ok: false, error: err?.message ?? "KV SET failed" }, { status: 500 });
