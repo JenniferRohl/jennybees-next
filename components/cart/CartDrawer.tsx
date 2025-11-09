@@ -65,7 +65,7 @@ export default function CartDrawer() {
       const res = await fetch('/api/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ line_items }),
+        body: JSON.stringify({ items: line_items }),
       });
 
       if (!res.ok) {
