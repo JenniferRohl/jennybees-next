@@ -38,7 +38,7 @@ export async function POST(req: Request) {
         : items.map((it: any) => ({
             price_data: {
               currency: "usd",
-              unit_amount: Number(it.unit_amount),
+              unit_amount: Math.round(Number(it.unit_amount) * 100),
               product_data: { name: String(it.name ?? "Item") },
             },
             quantity: Number(it.quantity || 1),
