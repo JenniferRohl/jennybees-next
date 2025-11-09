@@ -48,6 +48,14 @@ type Config = {
   social: { tiktok: string; facebook: string; tiktokPost?: string };
   products: Product[];
 };
+async function uploadImage(file: File): Promise<string> {
+  const fd = new FormData();
+  fd.append("file", file);
+  const res = await fetch("/api/upload", { method: "POST", body: fd });
+  const json = await res.json();
+  if (!res.ok || !json?.ok) throw new Error(json?.error || "Upload failed");
+  return json.url as string;
+}
 
 /** ===== UTIL ===== */
 const STORAGE_KEY = "jennybees_config_v6";
@@ -293,36 +301,55 @@ export default function JennyBeesCreation() {
     });
   }
 
-  const onBrowseFile = (
-    ev: React.ChangeEvent<HTMLInputElement>,
-    i: number | null,
-    pathSetter?: (v: string) => void
-  ) => {
-    const file = ev.target.files?.[0];
-    if (!file) return;
-    if (!file.type.startsWith("image/")) { alert("Please choose an image file."); return; }
-    const savedPath = toPublicImagePath(file);           // stable
-    const url = URL.createObjectURL(file);               // preview
-    setPreview(savedPath, url);
-    if (typeof i === "number") handleProductChange(i, "img", savedPath);
-    else if (pathSetter) pathSetter(savedPath);
-  };
+ const onBrowseFile = async (
+  ev: React.ChangeEvent<HTMLInputElement>,
+  i: number | null,
+  pathSetter?: (v: string) => void
+) => {
+  const file = ev.target.files?.[0];
+  if (!file) return;
+  if (!file.type.startsWith("image/")) { alert("Please choose an image file."); return; }
 
-  const onDropToField = (
-    e: React.DragEvent<HTMLDivElement>,
-    i: number | null,
-    pathSetter?: (v: string) => void
-  ) => {
-    e.preventDefault();
-    const file = e.dataTransfer.files?.[0];
-    if (!file) return;
-    if (!file.type.startsWith("image/")) { alert("Please drop an image file."); return; }
-    const savedPath = toPublicImagePath(file);           // stable
-    const url = URL.createObjectURL(file);               // preview
-    setPreview(savedPath, url);
-    if (typeof i === "number") handleProductChange(i, "img", savedPath);
-    else if (pathSetter) pathSetter(savedPath);
-  };
+  // 1) show instant preview
+  const preview = URL.createObjectURL(file);
+  if (typeof i === "number") handleProductChange(i, "img", preview);
+  else if (pathSetter) pathSetter(preview);
+
+  // 2) upload in background and swap in the permanent URL
+  try {
+    const url = await uploadImage(file);
+    if (typeof i === "number") handleProductChange(i, "img", url);
+    else if (pathSetter) pathSetter(url);
+  } catch (e: any) {
+    console.error(e);
+    alert("Upload failed. Keeping local preview.");
+  }
+};
+
+const onDropToField = async (
+  e: React.DragEvent<HTMLDivElement>,
+  i: number | null,
+  pathSetter?: (v: string) => void
+) => {
+  e.preventDefault();
+  const file = e.dataTransfer.files?.[0];
+  if (!file) return;
+  if (!file.type.startsWith("image/")) { alert("Please drop an image file."); return; }
+
+  const preview = URL.createObjectURL(file);
+  if (typeof i === "number") handleProductChange(i, "img", preview);
+  else if (pathSetter) pathSetter(preview);
+
+  try {
+    const url = await uploadImage(file);
+    if (typeof i === "number") handleProductChange(i, "img", url);
+    else if (pathSetter) pathSetter(url);
+  } catch (e: any) {
+    console.error(e);
+    alert("Upload failed. Keeping local preview.");
+  }
+};
+
 
   /** ===== Sections (public) ===== */
   function SectionHero() {
