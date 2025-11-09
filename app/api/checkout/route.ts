@@ -9,6 +9,15 @@ const STRIPE_KEY = process.env.STRIPE_SECRET_KEY ?? "";
 // Use the version bundled with your installed stripe types:
 const stripe = new Stripe(STRIPE_KEY, { apiVersion: "2023-10-16" });
 // (Alternatively: const stripe = new Stripe(STRIPE_KEY);)
+const httpsImages = (imgs?: unknown):
+string[] =>
+  Array.isArray(imgs)
+? imgs
+.filter(Boolean)
+.map(String)
+.filter((u) =>
+u.startsWith("https://"))
+:[]
 
 export async function POST(req: Request) {
   try {
@@ -39,7 +48,9 @@ export async function POST(req: Request) {
             price_data: {
               currency: "usd",
               unit_amount: Math.round(Number(it.unit_amount) * 100),
-              product_data: { name: String(it.name ?? "Item") },
+              product_data: { name: String(it.name ?? "Item"),
+                images: httpsImages(it.images)
+               },
             },
             quantity: Number(it.quantity || 1),
           }));
