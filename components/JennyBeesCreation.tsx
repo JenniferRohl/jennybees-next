@@ -300,6 +300,15 @@ export default function JennyBeesCreation() {
       return { ...prev, [savedPath]: objectUrl };
     });
   }
+const sendToBlob = async (file: File) => {
+  const fd = new FormData();
+  fd.append("file", file);
+  fd.append("filename", file.name);
+  const res = await fetch("/api/upload", { method: "POST", body: fd });
+  const json = await res.json();
+  if (!json.ok) throw new Error(json.error || "upload failed");
+  return json.url as string; // ← server-hosted URL (no more blob:)
+};
 
  const onBrowseFile = async (
   ev: React.ChangeEvent<HTMLInputElement>,
@@ -311,7 +320,7 @@ export default function JennyBeesCreation() {
   if (!file.type.startsWith("image/")) { alert("Please choose an image file."); return; }
 
   // 1) show instant preview
-  const preview = URL.createObjectURL(file);
+  const preview = await sendToBlob(file);
   if (typeof i === "number") handleProductChange(i, "img", preview);
   else if (pathSetter) pathSetter(preview);
 
@@ -336,7 +345,7 @@ const onDropToField = async (
   if (!file) return;
   if (!file.type.startsWith("image/")) { alert("Please drop an image file."); return; }
 
-  const preview = URL.createObjectURL(file);
+  const preview = await sendToBlob(file);
   if (typeof i === "number") handleProductChange(i, "img", preview);
   else if (pathSetter) pathSetter(preview);
 
