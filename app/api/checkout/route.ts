@@ -13,14 +13,19 @@ function siteBase() {
   );
 }
 
+type CustomItem = {
+  name: string;
+  unit_amount?: number | string; // dollars from UI
+  amount?: number | string;      // alt name (dollars)
+  price?: number | string;       // alt name (dollars)
+  quantity?: number;
+  image?: string;
+};
+
 type CartItem =
-  | { priceId: string; quantity?: number } // use existing Stripe Price
-  | {
-      name: string;
-      unit_amount: number | string; // dollars or cents (we fix below)
-      quantity?: number;
-      image?: string;
-    };
+  | { priceId: string; quantity?: number }  // Stripe Price path
+  | CustomItem;
+
 
 function toLineItem(it: CartItem): Stripe.Checkout.SessionCreateParams.LineItem {
   // Price by ID (best)
@@ -30,23 +35,26 @@ function toLineItem(it: CartItem): Stripe.Checkout.SessionCreateParams.LineItem 
   }
 
   // Ad-hoc price (dollars → cents conversion)
-  const c = it as Extract<CartItem, { name: string }>;
-  const qty = Math.max(1, Number(c.quantity ?? 1));
-  const rawAmount = Number(c.unit_amount);
-  const unit_amount =
-    rawAmount >= 100 ? Math.round(rawAmount) : Math.round(rawAmount * 100);
+  // Ad-hoc price (when no priceId is provided)
+const c = it as Extract<CartItem, { name: string }>;
 
-  return {
-    quantity: qty,
-    price_data: {
-      currency: "usd",
-      unit_amount,
-      product_data: {
-        name: c.name,
-        images: c.image ? [c.image] : undefined,
-      },
+const qty = Math.max(1, Number(c.quantity ?? 1));
+
+// Convert dollars → cents safely
+const unit = Math.round(Number(c.unit_amount ?? c.amount ?? c.price ?? 0) * 100);
+
+return {
+  price_data: {
+    currency: "usd",
+    product_data: {
+      name: c.name,
+      images: c.image ? [c.image] : undefined,
     },
-  };
+    unit_amount: unit, // 🔥 ALWAYS integer cents
+  },
+  quantity: qty,
+};
+
 }
 
 export async function POST(req: Request) {
