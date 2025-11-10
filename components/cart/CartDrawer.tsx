@@ -41,53 +41,47 @@ function releaseMany(id: string, n: number) {
 export default function CartDrawer() {
   const { items, remove, setQty, total, open, setOpen, ready } = useCart();
 
-  async function checkout() {
-    try {
-      const origin = typeof window !== 'undefined' ? window.location.origin : '';
-      const line_items = items.map((i) => {
-        const img =
-          i.image && /^https?:\/\//i.test(i.image)
-            ? i.image
-            : i.image && origin
-            ? `${origin}${i.image.startsWith('/') ? '' : '/'}${i.image}`
-            : undefined;
+  // at top of component body
+const [checkingOut, setCheckingOut] = React.useState(false);
 
-        return {
-          price_data: {
-            currency: 'usd',
-            product_data: img ? { name: i.name, images: [img] } : { name: i.name },
-            unit_amount: Math.round(Number(i.price) * 100),
-          },
-          quantity: i.qty,
-        };
-      });
+async function checkout() {
+  if (!items?.length) return;
+  setCheckingOut(true);
+  try {
+    // Normalize cart items -> API payload (prices in DOLLARS; backend converts to cents)
+    const payload = {
+      items: items.map((it: any) => ({
+        name: it.name,
+        unit_amount: Number(it.price), // dollars
+        quantity: Math.max(1, Number(it.quantity ?? it.qty ?? 1)),
+        image: it.image || it.img || undefined,
+      })),
+    };
 
-      const res = await fetch('/api/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items: line_items }),
-      });
+    const res = await fetch("/api/checkout", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(payload),
+    });
 
-      if (!res.ok) {
-        const text = await res.text();
-        console.error('Checkout failed:', res.status, text);
-        alert(`Checkout failed (${res.status}). See terminal for details.`);
-        return;
-      }
+    const data = await res.json();
 
-      const data = await res.json();
-      if (data?.url) {
-        window.location.assign(data.url);
-      } else {
-        console.error('No URL in response:', data);
-        alert('Checkout failed: no URL in response.');
-      }
-    } catch (e: any) {
-      console.error('Checkout error:', e);
-      alert(`Checkout error: ${e?.message || e}`);
+    if (data?.ok && data?.url) {
+      window.location.href = data.url;           // ← redirect to Stripe Checkout
+      return;
     }
+    console.error("Checkout failed:", data);
+    alert(data?.error || "Checkout failed");
+  } catch (err: any) {
+    console.error(err);
+    alert(err?.message || "Checkout failed");
+  } finally {
+    setCheckingOut(false);
   }
+}
 
+
+  
   return (
     <>
       {/* overlay */}
@@ -189,13 +183,14 @@ export default function CartDrawer() {
           </div>
 
           <button
-            onClick={checkout}
-            disabled={!ready || items.length === 0}
-            className="mt-3 w-full px-4 py-3 rounded-xl text-white font-medium disabled:opacity-50"
-            style={{ background: '#b76e79' }}
-          >
-            Checkout
-          </button>
+  onClick={checkout}
+  disabled={checkingOut || !ready || items.length === 0}
+  className="w-full px-4 py-3 rounded-xl text-white font-medium"
+  style={{ background: "#b76e79" }}
+>
+  {checkingOut ? "Redirecting…" : "Checkout"}
+</button>
+
         </div>
       </aside>
     </>
