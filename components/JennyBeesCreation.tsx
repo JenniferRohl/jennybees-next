@@ -25,7 +25,7 @@ type Product = {
   name: string;
   notes: string;
   price: number;
-  img: string;          // public path like /images/jen/xxx.jpg (no blob:)
+  img: string;
   badge?: string;
   defaultQty?: number;
 };
@@ -48,40 +48,8 @@ type Config = {
   social: { tiktok: string; facebook: string; tiktokPost?: string };
   products: Product[];
 };
-async function uploadImage(file: File): Promise<string> {
-  const fd = new FormData();
-  fd.append("file", file);
-  const res = await fetch("/api/upload", { method: "POST", body: fd });
-  const json = await res.json();
-  if (!res.ok || !json?.ok) throw new Error(json?.error || "Upload failed");
-  return json.url as string;
-}
 
 /** ===== UTIL ===== */
-// --- image upload helper (client -> /api/upload) ---
-async function uploadImageToServer(file: File): Promise<string> {
-  // Optional size/type guards
-  if (!file.type.startsWith("image/")) throw new Error("Only image files allowed");
-  if (file.size > 10 * 1024 * 1024) throw new Error("Max 10MB");
-
-  const clean = (file.name || "upload.bin")
-    .toLowerCase()
-    .replace(/\s+/g, "-")
-    .replace(/[^a-z0-9._-]/g, "");
-
-  const fd = new FormData();
-  fd.append("file", file);
-  fd.append("filename", clean);
-
-  const res = await fetch("/api/upload", { method: "POST", body: fd, cache: "no-store" });
-  const json = await res.json().catch(() => ({}));
-
-  if (!res.ok || !json?.ok || !json?.url) {
-    throw new Error(json?.error || `Upload failed (${res.status})`);
-  }
-  return json.url as string; // public https url
-}
-
 const STORAGE_KEY = "jennybees_config_v6";
 const priceFmt = (n: number) => `$${Number(n).toFixed(2)}`;
 const idFromName = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-");
@@ -91,14 +59,6 @@ const makeId = () =>
     : `p_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`);
 const withStableIds = (arr: any[]): Product[] =>
   (arr as Product[]).map((p: any) => (p.id ? p : { ...p, id: makeId() }));
-
-/** Save chosen file using a stable public path (keeps a preview via objectURL) */
-function toPublicImagePath(file: File, dir = "/images/jen"): string {
-  // You can sanitize the filename if you want:
-  // const clean = file.name.toLowerCase().replace(/[^a-z0-9._-]+/g, "-");
-  const clean = file.name;
-  return `${dir}/${clean}`;
-}
 
 /** ===== DEFAULT CONFIG ===== */
 const defaultConfig: Config = {
@@ -134,6 +94,123 @@ const defaultConfig: Config = {
   ]),
 };
 
+/** ===== Reusable upload field (drag, browse, preview) ===== */
+function ImageUploadField({
+  label,
+  value,
+  onChange,
+  onDropFile,
+  className = "",
+  note,
+}: {
+  label: string;
+  value: string;
+  onChange: (url: string) => void;
+  onDropFile: (file: File) => Promise<string>;
+  className?: string;
+  note?: string;
+}) {
+  const inputRef = React.useRef<HTMLInputElement | null>(null);
+  const [dragging, setDragging] = React.useState(false);
+  const [busy, setBusy] = React.useState(false);
+  const [err, setErr] = React.useState<string | null>(null);
+
+  const handleFiles = async (file?: File) => {
+    setErr(null);
+    if (!file) return;
+    if (!file.type.startsWith("image/")) { setErr("Please select an image."); return; }
+    // instant preview while uploading
+    const preview = URL.createObjectURL(file);
+    onChange(preview);
+    setBusy(true);
+    try {
+      const finalUrl = await onDropFile(file); // server upload -> final https URL
+      onChange(finalUrl);
+    } catch (e: any) {
+      setErr(e?.message || "Upload failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    void handleFiles(file);
+  };
+
+  const onBrowse = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    void handleFiles(file);
+    if (inputRef.current) inputRef.current.value = "";
+  };
+
+  return (
+    <div className={className}>
+      <div className="text-xs font-medium mb-1">{label}</div>
+
+      <div
+        onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={onDrop}
+        className={`rounded-2xl border bg-neutral-50 p-3 transition ${
+          dragging ? "border-neutral-400 bg-neutral-100" : "border-neutral-200"
+        }`}
+      >
+        {value ? (
+          <div className="flex items-center gap-3">
+            <img src={value} alt="preview" className="w-16 h-16 rounded object-cover ring-1 ring-black/5 bg-white" />
+            <div className="flex gap-2">
+              <button
+                type="button"
+                className="px-3 py-2 rounded-xl border text-sm"
+                onClick={() => inputRef.current?.click()}
+              >
+                {busy ? "Uploading…" : "Replace"}
+              </button>
+              <button
+                type="button"
+                className="px-3 py-2 rounded-xl border text-sm"
+                onClick={() => onChange("")}
+              >
+                Remove
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="grid place-items-center text-sm text-neutral-600 py-6">
+            <div>Drag an image here, or</div>
+            <button
+              type="button"
+              className="mt-2 px-3 py-2 rounded-xl border"
+              onClick={() => inputRef.current?.click()}
+            >
+              {busy ? "Uploading…" : "Browse…"}
+            </button>
+          </div>
+        )}
+
+        <input ref={inputRef} type="file" accept="image/*" hidden onChange={onBrowse} />
+      </div>
+
+      {note && <div className="text-xs text-neutral-500 mt-1">{note}</div>}
+      {err && <div className="text-xs text-red-600 mt-1">{err}</div>}
+    </div>
+  );
+}
+
+/** ===== Server upload helper -> final HTTPS URL ===== */
+async function uploadFile(file: File): Promise<string> {
+  const fd = new FormData();
+  fd.append("file", file);
+  fd.append("filename", file.name || "upload.bin");
+  const res = await fetch("/api/upload", { method: "POST", body: fd });
+  if (!res.ok) throw new Error(`Upload failed (${res.status})`);
+  const json = await res.json();
+  return String(json?.url || "");
+}
+
 export default function JennyBeesCreation() {
   const cart = useCart();
 
@@ -146,9 +223,6 @@ export default function JennyBeesCreation() {
     ...defaultConfig,
     products: withStableIds(defaultConfig.products),
   }));
-
-  /** Local preview map: savedPath -> objectURL (so UI shows instantly without storing blob:) */
-  const [imgPreview, setImgPreview] = React.useState<Record<string, string>>({});
 
   /** Which editor tab is open in Admin */
   const [activeSection, setActiveSection] = React.useState<SectionId>("hero");
@@ -168,9 +242,10 @@ export default function JennyBeesCreation() {
       merged.heroDecor = { ...defaultConfig.heroDecor, ...(parsed as any)?.heroDecor };
       setCfg(merged);
     } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /** Load from KV once on mount (merges over defaults/local preview) */
+  /** Load from server config once on mount (merges over defaults/local preview) */
   React.useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -219,7 +294,7 @@ export default function JennyBeesCreation() {
     }, 250);
   }, []);
 
-  /** Save to localStorage + KV (single, correct implementation) */
+  /** Save (localStorage + server) */
   const saveCfg = React.useCallback(async (next?: Config) => {
     const merged = next || cfg;
     try { window.localStorage.setItem(STORAGE_KEY, JSON.stringify(merged)); } catch {}
@@ -235,7 +310,7 @@ export default function JennyBeesCreation() {
         alert("Save failed: " + t);
         return;
       }
-      alert("Saved ✔ (synced)");
+      alert("Saved ✔");
     } catch (e: any) {
       alert("Save failed: " + (e?.message || e));
     }
@@ -314,84 +389,9 @@ export default function JennyBeesCreation() {
       return nxt;
     });
 
-  /** ===== File handlers (stable path + local preview) ===== */
-  function setPreview(savedPath: string, objectUrl: string) {
-    setImgPreview((prev) => {
-      const old = prev[savedPath];
-      if (old && old !== objectUrl) {
-        try { URL.revokeObjectURL(old); } catch {}
-      }
-      return { ...prev, [savedPath]: objectUrl };
-    });
-  }
-const sendToBlob = async (file: File) => {
-  const fd = new FormData();
-  fd.append("file", file);
-  fd.append("filename", file.name);
-  const res = await fetch("/api/upload", { method: "POST", body: fd });
-  const json = await res.json();
-  if (!json.ok) throw new Error(json.error || "upload failed");
-  return json.url as string; // ← server-hosted URL (no more blob:)
-};
-
-const onBrowseFile = async (
-  ev: React.ChangeEvent<HTMLInputElement>,
-  i: number | null,
-  pathSetter?: (v: string) => void
-) => {
-  const file = ev.target.files?.[0];
-  if (!file) return;
-  if (!file.type.startsWith("image/")) { alert("Please choose an image file."); return; }
-
-  // optimistic local preview
-  const localUrl = URL.createObjectURL(file);
-  if (typeof i === "number") handleProductChange(i, "img", localUrl);
-  else if (pathSetter) pathSetter(localUrl);
-
-  try {
-    const remoteUrl = await uploadImageToServer(file);
-    if (typeof i === "number") handleProductChange(i, "img", remoteUrl);
-    else if (pathSetter) pathSetter(remoteUrl);
-  } catch (e: any) {
-    console.error(e);
-    alert(e?.message || "Upload failed");
-  }
-};
-
-
-const onDropToField = async (
-  e: React.DragEvent<HTMLDivElement>,
-  i: number | null,
-  pathSetter?: (v: string) => void
-) => {
-  e.preventDefault();
-  const file = e.dataTransfer.files?.[0];
-  if (!file) return;
-  if (!file.type.startsWith("image/")) { alert("Please drop an image file."); return; }
-
-  // optimistic local preview
-  const localUrl = URL.createObjectURL(file);
-  if (typeof i === "number") handleProductChange(i, "img", localUrl);
-  else if (pathSetter) pathSetter(localUrl);
-
-  try {
-    const remoteUrl = await uploadImageToServer(file);
-    if (typeof i === "number") handleProductChange(i, "img", remoteUrl);
-    else if (pathSetter) pathSetter(remoteUrl);
-  } catch (e: any) {
-    console.error(e);
-    alert(e?.message || "Upload failed");
-  }
-};
-
-
-
   /** ===== Sections (public) ===== */
   function SectionHero() {
     const decor = cfg.heroDecor;
-
-    const heroSrc = imgPreview[cfg.hero.img] || cfg.hero.img;
-    const decorSrc = imgPreview[decor.img] || decor.img;
 
     return (
       <section className="relative overflow-hidden">
@@ -401,7 +401,7 @@ const onDropToField = async (
           <div className="relative">
             {decor.visible && decor.img && (
               <img
-                src={decorSrc}
+                src={decor.img}
                 alt="Decor"
                 className={`${decor.shape === "circle" ? "rounded-full" : "rounded-3xl"} ring-4 ring-white shadow-xl absolute`}
                 style={{
@@ -440,7 +440,7 @@ const onDropToField = async (
           {/* RIGHT: Main hero image */}
           <div className="relative">
             <div className="aspect-[4/5] rounded-3xl overflow-hidden shadow-2xl ring-1 ring-black/5 bg-white">
-              <img src={heroSrc} alt="Jen's candles hero" className="h-full w-full object-cover" />
+              <img src={cfg.hero.img} alt="Jen's candles hero" className="h-full w-full object-cover" />
             </div>
           </div>
         </div>
@@ -448,7 +448,7 @@ const onDropToField = async (
     );
   }
 
-  /** Fix: base FC, then memo that — not the inline JSX */
+  /** Shop section (memoized) */
   const SectionShopBase: React.FC = () => (
     <section id="shop" className="max-w-6xl mx-auto px-4 py-16">
       <div className="flex items-end justify-between mb-8">
@@ -459,44 +459,41 @@ const onDropToField = async (
       </div>
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {cfg.products.map((p) => {
-          const imgSrc = imgPreview[p.img] || p.img;
-          return (
-            <div key={p.id} className="group rounded-3xl bg-white ring-1 ring-neutral-200 shadow-sm hover:shadow-md transition overflow-hidden">
-              <div className="relative">
-                <img src={imgSrc} alt={p.name} className="h-56 w-full object-cover" />
-                {p.badge && (
-                  <div className="absolute left-3 top-3 text-xs px-2 py-1 rounded-full border bg-white/90" style={{ borderColor: "#e5e5e5", color: theme.black }}>
-                    {p.badge}
-                  </div>
-                )}
+        {cfg.products.map((p) => (
+          <div key={p.id} className="group rounded-3xl bg-white ring-1 ring-neutral-200 shadow-sm hover:shadow-md transition overflow-hidden">
+            <div className="relative">
+              <img src={p.img} alt={p.name} className="h-56 w-full object-cover" />
+              {p.badge && (
+                <div className="absolute left-3 top-3 text-xs px-2 py-1 rounded-full border bg-white/90" style={{ borderColor: "#e5e5e5", color: theme.black }}>
+                  {p.badge}
+                </div>
+              )}
+            </div>
+            <div className="p-4">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <h3 className="font-semibold tracking-tight">{p.name}</h3>
+                  <p className="text-sm text-neutral-600">{p.notes}</p>
+                </div>
+                <div className="font-medium">{priceFmt(p.price)}</div>
               </div>
-              <div className="p-4">
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <h3 className="font-semibold tracking-tight">{p.name}</h3>
-                    <p className="text-sm text-neutral-600">{p.notes}</p>
-                  </div>
-                  <div className="font-medium">{priceFmt(p.price)}</div>
-                </div>
-                <div className="mt-4 flex gap-2">
-                  <button
-                    className="flex-1 px-4 py-2 rounded-xl text-sm font-medium shadow bg-clip-padding transition hover:brightness-[1.04] hover:shadow-md"
-                    style={{ backgroundImage: `linear-gradient(135deg, ${theme.roseMetalStart}, ${theme.roseMetalMid} 40%, ${theme.roseMetalDeep})`, color: theme.white }}
-                    onClick={() =>
-                      cart.add({ id: idFromName(p.name), name: p.name, price: p.price, image: p.img }, p.defaultQty ?? 1)
-                    }
-                  >
-                    Add to cart
-                  </button>
-                  <button className="px-4 py-2 rounded-xl border text-sm" style={{ borderColor: "#e5e5e5" }}>
-                    Details
-                  </button>
-                </div>
+              <div className="mt-4 flex gap-2">
+                <button
+                  className="flex-1 px-4 py-2 rounded-xl text-sm font-medium shadow bg-clip-padding transition hover:brightness-[1.04] hover:shadow-md"
+                  style={{ backgroundImage: `linear-gradient(135deg, ${theme.roseMetalStart}, ${theme.roseMetalMid} 40%, ${theme.roseMetalDeep})`, color: theme.white }}
+                  onClick={() =>
+                    cart.add({ id: idFromName(p.name), name: p.name, price: p.price, image: p.img }, p.defaultQty ?? 1)
+                  }
+                >
+                  Add to cart
+                </button>
+                <button className="px-4 py-2 rounded-xl border text-sm" style={{ borderColor: "#e5e5e5" }}>
+                  Details
+                </button>
               </div>
             </div>
-          );
-        })}
+          </div>
+        ))}
       </div>
 
       <div className="mt-6 text-center text-sm text-neutral-600">
@@ -627,7 +624,7 @@ const onDropToField = async (
     );
   }
 
-  /** ===== Section map (fixed typing) ===== */
+  /** ===== Section map ===== */
   const SectionMap: Record<SectionId, React.ComponentType> = {
     hero: SectionHero,
     shop: SectionShop,
@@ -637,7 +634,7 @@ const onDropToField = async (
     contact: SectionContact,
   };
 
-  /** ===== ADMIN PANEL ===== */
+  /** ===== Admin Panel ===== */
   function AdminPanel() {
     if (!admin) return null;
 
@@ -730,35 +727,23 @@ const onDropToField = async (
                   />
                 </div>
 
-                {/* Hero image */}
-                <div className="grid gap-2">
-                  <label className="text-xs font-medium">Hero image</label>
-                  <div
-                    onDragOver={(e) => e.preventDefault()}
-                    onDrop={(e) => onDropToField(e, null, (v) => setCfgField("hero", { ...cfg.hero, img: v }))}
-                    className="rounded border p-3 text-sm bg-neutral-50"
-                    style={{ borderColor: "#e5e5e5" }}
-                    title="Drag an image here"
-                  >
-                    <div className="flex gap-3">
-                      <input
-                        className="flex-1 px-3 py-2 rounded border bg-white"
-                        style={{ borderColor: "#e5e5e5" }}
-                        value={cfg.hero.img}
-                        onChange={(e) => setCfgField("hero", { ...cfg.hero, img: e.target.value })}
-                        placeholder="/images/jen/hero.jpg"
-                      />
-                      <label className="px-3 py-2 rounded border cursor-pointer" style={{ borderColor: "#e5e5e5" }}>
-                        Browse…
-                        <input type="file" accept="image/*" hidden onChange={(ev) => onBrowseFile(ev, null, (v) => setCfgField("hero", { ...cfg.hero, img: v }))} />
-                      </label>
-                    </div>
-                  </div>
-                </div>
+                <ImageUploadField
+                  label="Hero image"
+                  value={cfg.hero.img}
+                  onChange={(url) => setCfgField("hero", { ...cfg.hero, img: url })}
+                  onDropFile={uploadFile}
+                />
 
                 {/* Decor image controls */}
                 <div className="mt-4 grid gap-2">
-                  <div className="text-xs font-medium">Decorative image (left of heading)</div>
+                  <ImageUploadField
+                    label="Decorative image (left of heading)"
+                    value={cfg.heroDecor.img}
+                    onChange={(url) => setCfgField("heroDecor", { ...cfg.heroDecor, img: url })}
+                    onDropFile={uploadFile}
+                    note="Tip: try 200–260px size; use the X/Y controls below to position."
+                  />
+
                   <div className="flex items-center gap-3">
                     <label className="flex items-center gap-2 text-xs">
                       <input
@@ -818,35 +803,6 @@ const onDropToField = async (
                         }
                       />
                     </label>
-                  </div>
-
-                  <div
-                    onDragOver={(e) => e.preventDefault()}
-                    onDrop={(e) => onDropToField(e, null, (v) => setCfgField("heroDecor", { ...cfg.heroDecor, img: v }))}
-                    className="rounded border p-3 text-sm bg-neutral-50"
-                    style={{ borderColor: "#e5e5e5" }}
-                    title="Drag an image here"
-                  >
-                    <div className="flex gap-3">
-                      <input
-                        className="flex-1 px-2 py-1 rounded border bg-white"
-                        style={{ borderColor: "#e5e5e5" }}
-                        value={cfg.heroDecor.img}
-                        onChange={(e) => setCfgField("heroDecor", { ...cfg.heroDecor, img: e.target.value })}
-                        placeholder="/images/jen/bee.jpg"
-                      />
-                      <label className="px-2 py-1 rounded border cursor-pointer text-sm" style={{ borderColor: "#e5e5e5" }}>
-                        Browse…
-                        <input
-                          type="file"
-                          accept="image/*"
-                          hidden
-                          onChange={(ev) =>
-                            onBrowseFile(ev, null, (v) => setCfgField("heroDecor", { ...cfg.heroDecor, img: v }))
-                          }
-                        />
-                      </label>
-                    </div>
                   </div>
                 </div>
               </div>
@@ -918,28 +874,16 @@ const onDropToField = async (
                       onChange={(e) => { captureCaret(p.id, "defaultQty", e); handleProductChange(i, "defaultQty", Math.max(1, Number(e.target.value || 1))); }}
                       placeholder="Qty"
                     />
-                    <div
-                      onDragOver={(e) => e.preventDefault()}
-                      onDrop={(e) => onDropToField(e, i)}
-                      className="md:col-span-3 rounded border p-1 bg-neutral-50"
-                      style={{ borderColor: "#e5e5e5" }}
-                      title="Drag an image here"
-                    >
-                      <div className="flex gap-3">
-                        <input
-                          ref={(el) => { inputRefs.current[p.id] ||= {}; inputRefs.current[p.id].img = el; }}
-                          className="flex-1 px-2 py-1 rounded border bg-white"
-                          style={{ borderColor: "#e5e5e5" }}
-                          value={p.img}
-                          onChange={(e) => { captureCaret(p.id, "img", e); handleProductChange(i, "img", e.target.value); }}
-                          placeholder="/images/jen/forest-ember.jpg"
-                        />
-                        <label className="px-2 py-1 rounded border cursor-pointer text-sm" style={{ borderColor: "#e5e5e5" }}>
-                          Browse…
-                          <input type="file" accept="image/*" hidden onChange={(ev) => onBrowseFile(ev, i)} />
-                        </label>
-                      </div>
+
+                    <div className="md:col-span-3">
+                      <ImageUploadField
+                        label="Product image"
+                        value={p.img}
+                        onChange={(url) => handleProductChange(i, "img", url)}
+                        onDropFile={uploadFile}
+                      />
                     </div>
+
                     <div className="flex justify-end ml-3 md:ml-0">
                       <button
                         className="px-2 py-1 text-xs rounded border text-red-600"
