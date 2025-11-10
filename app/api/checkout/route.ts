@@ -41,6 +41,17 @@ type CartItem =
   | { priceId: string; quantity?: number }  // Stripe Price path
   | CustomItem;
 
+function httpImage(url?: string): string | undefined {
+  if (!url) return undefined;
+  try {
+    const u = new URL(url, "https://jennybeescreation.com"); // base for relative
+    // reject blob:, data:, etc.
+    if (u.protocol === "http:" || u.protocol === "https:") {
+      return u.toString();
+    }
+  } catch {}
+  return undefined;
+}
 
 function toLineItem(it: CartItem): Stripe.Checkout.SessionCreateParams.LineItem {
   // Price by ID (best)
@@ -63,7 +74,7 @@ return {
     currency: "usd",
     product_data: {
       name: c.name,
-      images: c.image ? [c.image] : undefined,
+      images: httpImage(c.image) ?[httpImage(c.image)!] : undefined,
     },
     unit_amount: unit, // 🔥 ALWAYS integer cents
   },
