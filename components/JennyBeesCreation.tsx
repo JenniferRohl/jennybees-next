@@ -595,34 +595,117 @@ export default function JennyBeesCreation() {
   }
 
   function SectionContact() {
-    return (
-      <section id="contact" className="bg-white">
-        <div className="max-w-6xl mx-auto px-4 py-16 grid md:grid-cols-2 gap-8">
-          <div>
-            <h2 className="text-2xl md:text-3xl font-semibold tracking-tight">Wholesale & Custom</h2>
-            <p className="text-neutral-600 mt-2">Boutiques, corporate gifts, wedding favors — we’d love to collaborate.</p>
-            <ul className="mt-4 text-neutral-700 text-sm space-y-2">
-              <li>▪️ Minimums start at 24 units per scent</li>
-              <li>▪️ 2–3 week lead time for customs</li>
-              <li>▪️ Private label available</li>
-            </ul>
-          </div>
-          <form className="rounded-2xl p-6 ring-1 ring-neutral-200" style={{ background: theme.cream }}>
-            <div className="grid sm:grid-cols-2 gap-4">
-              <input placeholder="Name" className="px-4 py-3 rounded-xl ring-1 ring-neutral-300 focus:ring-2 outline-none" />
-              <input placeholder="Email" className="px-4 py-3 rounded-xl ring-1 ring-neutral-300 focus:ring-2 outline-none" />
-            </div>
-            <input placeholder="Subject" className="mt-4 w-full px-4 py-3 rounded-xl ring-1 ring-neutral-300 focus:ring-2 outline-none" />
-            <textarea placeholder="Tell us about your project" rows={5} className="mt-4 w-full px-4 py-3 rounded-xl ring-1 ring-neutral-300 focus:ring-2 outline-none" />
-            <button type="button" className="mt-4 px-5 py-3 rounded-xl font-medium"
-              style={{ backgroundImage: `linear-gradient(135deg, ${theme.roseMetalStart}, ${theme.roseMetalMid} 40%, ${theme.roseMetalDeep})`, color: theme.white }}>
-              Send
-            </button>
-          </form>
-        </div>
-      </section>
-    );
+  const [form, setForm] = React.useState({
+    name: "",
+    email: "",
+    subject: "",
+    message: "",
+    company: "", // honeypot
+  });
+  const [status, setStatus] = React.useState<"idle"|"sending"|"ok"|"err">("idle");
+  const [errMsg, setErrMsg] = React.useState<string>("");
+
+  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setErrMsg("");
+    setStatus("sending");
+    try {
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      const json = await res.json();
+      if (!res.ok || !json?.ok) {
+        throw new Error(json?.error || `Send failed (${res.status})`);
+      }
+      setStatus("ok");
+      setForm({ name: "", email: "", subject: "", message: "", company: "" });
+    } catch (err: any) {
+      setStatus("err");
+      setErrMsg(err?.message || "Something went wrong.");
+    }
   }
+
+  return (
+    <section id="contact" className="bg-white">
+      <div className="max-w-6xl mx-auto px-4 py-16 grid md:grid-cols-2 gap-8">
+        <div>
+          <h2 className="text-2xl md:text-3xl font-semibold tracking-tight">Wholesale & Custom</h2>
+          <p className="text-neutral-600 mt-2">Boutiques, corporate gifts, wedding favors — we’d love to collaborate.</p>
+          <ul className="mt-4 text-neutral-700 text-sm space-y-2">
+            <li>▪️ Minimums start at 24 units per scent</li>
+            <li>▪️ 2–3 week lead time for customs</li>
+            <li>▪️ Private label available</li>
+          </ul>
+        </div>
+
+        <form onSubmit={onSubmit} className="rounded-2xl p-6 ring-1 ring-neutral-200" style={{ background: theme.cream }}>
+          {/* Honeypot */}
+          <input
+            type="text"
+            name="company"
+            autoComplete="off"
+            tabIndex={-1}
+            value={form.company}
+            onChange={(e) => setForm({ ...form, company: e.target.value })}
+            className="hidden"
+          />
+
+          <div className="grid sm:grid-cols-2 gap-4">
+            <input
+              required
+              placeholder="Name"
+              className="px-3 py-2 rounded-xl ring-1 ring-neutral-300 focus:ring-2 outline-none bg-white"
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+            />
+            <input
+              required
+              type="email"
+              placeholder="Email"
+              className="px-3 py-2 rounded-xl ring-1 ring-neutral-300 focus:ring-2 outline-none bg-white"
+              value={form.email}
+              onChange={(e) => setForm({ ...form, email: e.target.value })}
+            />
+          </div>
+
+          <input
+            placeholder="Subject"
+            className="mt-4 w-full px-3 py-2 rounded-xl ring-1 ring-neutral-300 focus:ring-2 outline-none bg-white"
+            value={form.subject}
+            onChange={(e) => setForm({ ...form, subject: e.target.value })}
+          />
+          <textarea
+            required
+            placeholder="Tell us about your project"
+            rows={5}
+            className="mt-4 w-full px-3 py-2 rounded-xl ring-1 ring-neutral-300 focus:ring-2 outline-none bg-white"
+            value={form.message}
+            onChange={(e) => setForm({ ...form, message: e.target.value })}
+          />
+
+          <button
+            type="submit"
+            disabled={status === "sending"}
+            className="mt-4 px-5 py-3 rounded-xl font-medium disabled:opacity-60"
+            style={{ backgroundImage: `linear-gradient(135deg, ${theme.roseMetalStart}, ${theme.roseMetalMid} 40%, ${theme.roseMetalDeep})`, color: theme.white }}
+          >
+            {status === "sending" ? "Sending…" : "Send"}
+          </button>
+
+          {status === "ok" && (
+            <div className="mt-3 text-sm text-green-700">Thanks! We’ll be in touch shortly.</div>
+          )}
+          {status === "err" && (
+            <div className="mt-3 text-sm text-red-600">Couldn’t send: {errMsg}</div>
+          )}
+        </form>
+      </div>
+    </section>
+  );
+}
+
 
   /** ===== Section map ===== */
   const SectionMap: Record<SectionId, React.ComponentType> = {
