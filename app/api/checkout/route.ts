@@ -5,7 +5,7 @@ import Stripe from "stripe";
 export const runtime = "nodejs";
 
 const STRIPE_KEY = process.env.STRIPE_SECRET_KEY ?? "";
-const stripe = new Stripe(STRIPE_KEY, { apiVersion: "2024-06-20" });
+const stripe = new Stripe(STRIPE_KEY, { apiVersion: "2023-10-16" });
 
 type PriceItem = { priceId: string; quantity?: number };
 type CustomItem = {
