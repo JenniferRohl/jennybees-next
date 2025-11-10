@@ -25,7 +25,7 @@ export async function POST(req: Request) {
       email: String(form.get("email") || ""),
     };
 
-    const stripe = new Stripe(STRIPE_KEY, { apiVersion: "2024-06-20" });
+    const stripe = new Stripe(STRIPE_KEY, { apiVersion: "2023-10-16" });
     const session = await stripe.checkout.sessions.retrieve(sessionId);
     const items = await stripe.checkout.sessions.listLineItems(sessionId, { limit: 50 });
 
