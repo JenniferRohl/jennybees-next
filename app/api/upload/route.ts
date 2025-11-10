@@ -25,7 +25,7 @@ export async function POST(req: Request) {
       addRandomSuffix: true,
       contentType: file.type,
       cacheControl: "public, max-age=31536000, immutable",
-    });
+          } as any);
 
     return NextResponse.json({ ok: true, url: blob.url });
   } catch (err: any) {
