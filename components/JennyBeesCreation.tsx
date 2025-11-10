@@ -576,8 +576,8 @@ export default function JennyBeesCreation() {
             <div className="rounded-2xl p-5 ring-1 ring-neutral-200">
               <div className="font-semibold">Shipping</div>
               <ul className="mt-2 space-y-2">
-                <li>• Free U.S. shipping on orders $35+</li>
-                <li>• Flat rate under $35</li>
+                <li>• Free U.S. shipping on orders $50+</li>
+                <li>• Flat rate under $50</li>
                 <li>• Orders ship in 2–4 business days</li>
               </ul>
             </div>
@@ -966,7 +966,7 @@ export default function JennyBeesCreation() {
     <div className="min-h-screen" style={{ color: theme.black, backgroundColor: "#fffff0" }}>
       {/* Announcement */}
       <div className="w-full text-center text-xs md:text-sm py-2" style={{ background: theme.black, color: theme.white }}>
-        ✨ Free shipping on orders $35+ • Hand-poured in Georgia
+        ✨ Free shipping on orders $50+ • Hand-poured in Georgia
       </div>
 
       {/* Header */}
