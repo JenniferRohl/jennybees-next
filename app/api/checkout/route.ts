@@ -12,6 +12,21 @@ function siteBase() {
     "https://jennybeescreation.com"
   );
 }
+function normalizeSiteUrl(): string {
+  // prefer explicit var
+  let u = (process.env.NEXT_PUBLIC_SITE_URL || "").trim();
+  // if empty, try vercel host
+  if (!u) {
+    const v = (process.env.VERCEL_URL || "").trim(); // host only on Vercel
+    if (v) u = `https://${v}`;
+  }
+  // final fallback: your domain
+  if (!u) u = "https://jennybeescreation.com";
+
+  // ensure protocol and no trailing slash
+  if (!/^https?:\/\//i.test(u)) u = `https://${u}`;
+  return u.replace(/\/+$/, "");
+}
 
 type CustomItem = {
   name: string;
