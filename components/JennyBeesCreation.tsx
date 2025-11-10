@@ -58,6 +58,30 @@ async function uploadImage(file: File): Promise<string> {
 }
 
 /** ===== UTIL ===== */
+// --- image upload helper (client -> /api/upload) ---
+async function uploadImageToServer(file: File): Promise<string> {
+  // Optional size/type guards
+  if (!file.type.startsWith("image/")) throw new Error("Only image files allowed");
+  if (file.size > 10 * 1024 * 1024) throw new Error("Max 10MB");
+
+  const clean = (file.name || "upload.bin")
+    .toLowerCase()
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9._-]/g, "");
+
+  const fd = new FormData();
+  fd.append("file", file);
+  fd.append("filename", clean);
+
+  const res = await fetch("/api/upload", { method: "POST", body: fd, cache: "no-store" });
+  const json = await res.json().catch(() => ({}));
+
+  if (!res.ok || !json?.ok || !json?.url) {
+    throw new Error(json?.error || `Upload failed (${res.status})`);
+  }
+  return json.url as string; // public https url
+}
+
 const STORAGE_KEY = "jennybees_config_v6";
 const priceFmt = (n: number) => `$${Number(n).toFixed(2)}`;
 const idFromName = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-");
@@ -310,7 +334,7 @@ const sendToBlob = async (file: File) => {
   return json.url as string; // ← server-hosted URL (no more blob:)
 };
 
- const onBrowseFile = async (
+const onBrowseFile = async (
   ev: React.ChangeEvent<HTMLInputElement>,
   i: number | null,
   pathSetter?: (v: string) => void
@@ -319,21 +343,21 @@ const sendToBlob = async (file: File) => {
   if (!file) return;
   if (!file.type.startsWith("image/")) { alert("Please choose an image file."); return; }
 
-  // 1) show instant preview
-  const preview = await sendToBlob(file);
-  if (typeof i === "number") handleProductChange(i, "img", preview);
-  else if (pathSetter) pathSetter(preview);
+  // optimistic local preview
+  const localUrl = URL.createObjectURL(file);
+  if (typeof i === "number") handleProductChange(i, "img", localUrl);
+  else if (pathSetter) pathSetter(localUrl);
 
-  // 2) upload in background and swap in the permanent URL
   try {
-    const url = await uploadImage(file);
-    if (typeof i === "number") handleProductChange(i, "img", url);
-    else if (pathSetter) pathSetter(url);
+    const remoteUrl = await uploadImageToServer(file);
+    if (typeof i === "number") handleProductChange(i, "img", remoteUrl);
+    else if (pathSetter) pathSetter(remoteUrl);
   } catch (e: any) {
     console.error(e);
-    alert("Upload failed. Keeping local preview.");
+    alert(e?.message || "Upload failed");
   }
 };
+
 
 const onDropToField = async (
   e: React.DragEvent<HTMLDivElement>,
@@ -345,19 +369,21 @@ const onDropToField = async (
   if (!file) return;
   if (!file.type.startsWith("image/")) { alert("Please drop an image file."); return; }
 
-  const preview = await sendToBlob(file);
-  if (typeof i === "number") handleProductChange(i, "img", preview);
-  else if (pathSetter) pathSetter(preview);
+  // optimistic local preview
+  const localUrl = URL.createObjectURL(file);
+  if (typeof i === "number") handleProductChange(i, "img", localUrl);
+  else if (pathSetter) pathSetter(localUrl);
 
   try {
-    const url = await uploadImage(file);
-    if (typeof i === "number") handleProductChange(i, "img", url);
-    else if (pathSetter) pathSetter(url);
+    const remoteUrl = await uploadImageToServer(file);
+    if (typeof i === "number") handleProductChange(i, "img", remoteUrl);
+    else if (pathSetter) pathSetter(remoteUrl);
   } catch (e: any) {
     console.error(e);
-    alert("Upload failed. Keeping local preview.");
+    alert(e?.message || "Upload failed");
   }
 };
+
 
 
   /** ===== Sections (public) ===== */
