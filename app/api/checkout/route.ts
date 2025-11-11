@@ -12,6 +12,7 @@ function siteBase() {
     "https://jennybeescreation.com"
   );
 }
+
 function normalizeSiteUrl(): string {
   // prefer explicit var
   let u = (process.env.NEXT_PUBLIC_SITE_URL || "").trim();
@@ -110,13 +111,17 @@ export async function POST(req: Request) {
     const site = siteBase();
 
     const session = await stripe.checkout.sessions.create({
-      mode: "payment",
-      line_items,
-      allow_promotion_codes: true,
-      billing_address_collection: "auto",
-      success_url: `${site}/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${site}/cancel`,
-    });
+  line_items,
+  mode: "payment",
+  billing_address_collection: "required",
+
+  // 🚨 Replace with your shipping form page:
+  success_url: `${siteBase()}/shipping?session_id={CHECKOUT_SESSION_ID}`,
+
+  // Optional: If user cancels, send them back to the cart:
+  cancel_url: `${siteBase()}/cart`,
+});
+
 
     return NextResponse.json({ ok: true, url: session.url });
   } catch (err: any) {
