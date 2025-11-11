@@ -1,6 +1,6 @@
 // app/shipping/page.tsx
 "use client";
-
+export const dynamic = "force-dynamic";
 import * as React from "react";
 import { useSearchParams } from "next/navigation";
 
