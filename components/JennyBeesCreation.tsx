@@ -25,9 +25,10 @@ type Product = {
   name: string;
   notes: string;
   price: number;
-  img: string;
+  img: string;          // public URL only (no blob:)
   badge?: string;
   defaultQty?: number;
+  qty?: number;         // optional inventory hook for future
 };
 type SectionId = "hero" | "shop" | "about" | "social" | "shipping" | "contact";
 type HeroDecor = {
@@ -59,6 +60,24 @@ const makeId = () =>
     : `p_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`);
 const withStableIds = (arr: any[]): Product[] =>
   (arr as Product[]).map((p: any) => (p.id ? p : { ...p, id: makeId() }));
+
+const normalizeUrl = (u: string) => (u || "").trim();
+const isBlobUrl = (u?: string) => !!u && u.startsWith("blob:");
+
+/** Upload helper: POST /api/upload -> { ok: true, url } */
+async function uploadToBlob(file: File, filename?: string): Promise<string> {
+  const fd = new FormData();
+  fd.set("file", file);
+  if (filename) fd.set("filename", filename);
+  const res = await fetch("/api/upload", { method: "POST", body: fd });
+  if (!res.ok) {
+    const t = await res.text().catch(() => "");
+    throw new Error(`Upload failed (${res.status}) ${t}`);
+  }
+  const data = await res.json().catch(() => ({}));
+  if (!data?.ok || !data?.url) throw new Error("Upload did not return a url.");
+  return String(data.url);
+}
 
 /** ===== DEFAULT CONFIG ===== */
 const defaultConfig: Config = {
@@ -94,131 +113,14 @@ const defaultConfig: Config = {
   ]),
 };
 
-/** ===== Reusable upload field (drag, browse, preview) ===== */
-function ImageUploadField({
-  label,
-  value,
-  onChange,
-  onDropFile,
-  className = "",
-  note,
-}: {
-  label: string;
-  value: string;
-  onChange: (url: string) => void;
-  onDropFile: (file: File) => Promise<string>;
-  className?: string;
-  note?: string;
-}) {
-  const inputRef = React.useRef<HTMLInputElement | null>(null);
-  const [dragging, setDragging] = React.useState(false);
-  const [busy, setBusy] = React.useState(false);
-  const [err, setErr] = React.useState<string | null>(null);
-
-  const handleFiles = async (file?: File) => {
-    setErr(null);
-    if (!file) return;
-    if (!file.type.startsWith("image/")) { setErr("Please select an image."); return; }
-    // instant preview while uploading
-    const preview = URL.createObjectURL(file);
-    onChange(preview);
-    setBusy(true);
-    try {
-      const finalUrl = await onDropFile(file); // server upload -> final https URL
-      onChange(finalUrl);
-    } catch (e: any) {
-      setErr(e?.message || "Upload failed");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const onDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setDragging(false);
-    const file = e.dataTransfer.files?.[0];
-    void handleFiles(file);
-  };
-
-  const onBrowse = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    void handleFiles(file);
-    if (inputRef.current) inputRef.current.value = "";
-  };
-
-  return (
-    <div className={className}>
-      <div className="text-xs font-medium mb-1">{label}</div>
-
-      <div
-        onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
-        onDragLeave={() => setDragging(false)}
-        onDrop={onDrop}
-        className={`rounded-2xl border bg-neutral-50 p-3 transition ${
-          dragging ? "border-neutral-400 bg-neutral-100" : "border-neutral-200"
-        }`}
-      >
-        {value ? (
-          <div className="flex items-center gap-3">
-            <img src={value} alt="preview" className="w-16 h-16 rounded object-cover ring-1 ring-black/5 bg-white" />
-            <div className="flex gap-2">
-              <button
-                type="button"
-                className="px-3 py-2 rounded-xl border text-sm"
-                onClick={() => inputRef.current?.click()}
-              >
-                {busy ? "Uploading…" : "Replace"}
-              </button>
-              <button
-                type="button"
-                className="px-3 py-2 rounded-xl border text-sm"
-                onClick={() => onChange("")}
-              >
-                Remove
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="grid place-items-center text-sm text-neutral-600 py-6">
-            <div>Drag an image here, or</div>
-            <button
-              type="button"
-              className="mt-2 px-3 py-2 rounded-xl border"
-              onClick={() => inputRef.current?.click()}
-            >
-              {busy ? "Uploading…" : "Browse…"}
-            </button>
-          </div>
-        )}
-
-        <input ref={inputRef} type="file" accept="image/*" hidden onChange={onBrowse} />
-      </div>
-
-      {note && <div className="text-xs text-neutral-500 mt-1">{note}</div>}
-      {err && <div className="text-xs text-red-600 mt-1">{err}</div>}
-    </div>
-  );
-}
-
-/** ===== Server upload helper -> final HTTPS URL ===== */
-async function uploadFile(file: File): Promise<string> {
-  const fd = new FormData();
-  fd.append("file", file);
-  fd.append("filename", file.name || "upload.bin");
-  const res = await fetch("/api/upload", { method: "POST", body: fd });
-  if (!res.ok) throw new Error(`Upload failed (${res.status})`);
-  const json = await res.json();
-  return String(json?.url || "");
-}
-
 export default function JennyBeesCreation() {
   const cart = useCart();
 
-  /** Admin from URL (SSR-safe, no window usage) */
+  /** Admin from URL (SSR-safe) */
   const searchParams = useSearchParams();
   const admin = searchParams.get("admin") === "1";
 
-  /** Config state — start from defaults, then hydrate from localStorage in an effect */
+  /** Config state — start from defaults, hydrate from localStorage */
   const [cfg, setCfg] = React.useState<Config>(() => ({
     ...defaultConfig,
     products: withStableIds(defaultConfig.products),
@@ -227,7 +129,10 @@ export default function JennyBeesCreation() {
   /** Which editor tab is open in Admin */
   const [activeSection, setActiveSection] = React.useState<SectionId>("hero");
 
-  /** Load from localStorage once on mount */
+  /** Simple uploading flags (per-field) */
+  const [uploading, setUploading] = React.useState<Record<string, boolean>>({});
+
+  /** LocalStorage hydrate once */
   React.useEffect(() => {
     try {
       const raw = window.localStorage.getItem(STORAGE_KEY);
@@ -245,7 +150,7 @@ export default function JennyBeesCreation() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /** Load from server config once on mount (merges over defaults/local preview) */
+  /** Load from server KV once (merge over local) */
   React.useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -285,7 +190,7 @@ export default function JennyBeesCreation() {
     return () => window.removeEventListener("storage", onStorage);
   }, []);
 
-  /** Debounced preview writer (prevents focus jank while typing) */
+  /** Debounced preview writer (prevents focus jank) */
   const previewTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const writePreview = React.useCallback((next: Config) => {
     if (previewTimer.current) clearTimeout(previewTimer.current);
@@ -294,7 +199,7 @@ export default function JennyBeesCreation() {
     }, 250);
   }, []);
 
-  /** Save (localStorage + server) */
+  /** Save to local + KV */
   const saveCfg = React.useCallback(async (next?: Config) => {
     const merged = next || cfg;
     try { window.localStorage.setItem(STORAGE_KEY, JSON.stringify(merged)); } catch {}
@@ -310,7 +215,7 @@ export default function JennyBeesCreation() {
         alert("Save failed: " + t);
         return;
       }
-      alert("Saved ✔");
+      alert("Saved ✔ (synced)");
     } catch (e: any) {
       alert("Save failed: " + (e?.message || e));
     }
@@ -332,7 +237,7 @@ export default function JennyBeesCreation() {
       return nxt;
     });
 
-  // caret lock to keep cursor stable while typing
+  // caret lock
   type Field = "name" | "notes" | "price" | "badge" | "defaultQty" | "img";
   const inputRefs = React.useRef<Record<string, Partial<Record<Field, HTMLInputElement | null>>>>({});
   const caretRef = React.useRef<{ id: string; field: Field; start: number | null; end: number | null } | null>(null);
@@ -389,6 +294,54 @@ export default function JennyBeesCreation() {
       return nxt;
     });
 
+  /** Public uploader: ALWAYS store public URL, never blob */
+  const onPickOrDropPublicUrl = async (
+    file: File,
+    apply: (url: string) => void,
+    busyKey: string
+  ) => {
+    setUploading((u) => ({ ...u, [busyKey]: true }));
+    try {
+      const url = await uploadToBlob(file, file.name);
+      apply(normalizeUrl(url));
+    } catch (e: any) {
+      alert(e?.message || "Upload failed.");
+    } finally {
+      setUploading((u) => ({ ...u, [busyKey]: false }));
+    }
+  };
+
+  const onBrowseFile = async (
+    ev: React.ChangeEvent<HTMLInputElement>,
+    i: number | null,
+    pathSetter?: (v: string) => void
+  ) => {
+    const file = ev.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) { alert("Please choose an image file."); return; }
+    if (typeof i === "number") {
+      await onPickOrDropPublicUrl(file, (url) => handleProductChange(i, "img", url), `product:${i}:img`);
+    } else if (pathSetter) {
+      await onPickOrDropPublicUrl(file, (url) => pathSetter(url), `adhoc`);
+    }
+  };
+
+  const onDropToField = async (
+    e: React.DragEvent<HTMLDivElement>,
+    i: number | null,
+    pathSetter?: (v: string) => void
+  ) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) { alert("Please drop an image file."); return; }
+    if (typeof i === "number") {
+      await onPickOrDropPublicUrl(file, (url) => handleProductChange(i, "img", url), `product:${i}:img`);
+    } else if (pathSetter) {
+      await onPickOrDropPublicUrl(file, (url) => pathSetter(url), `adhoc`);
+    }
+  };
+
   /** ===== Sections (public) ===== */
   function SectionHero() {
     const decor = cfg.heroDecor;
@@ -401,7 +354,7 @@ export default function JennyBeesCreation() {
           <div className="relative">
             {decor.visible && decor.img && (
               <img
-                src={decor.img}
+                src={normalizeUrl(decor.img)}
                 alt="Decor"
                 className={`${decor.shape === "circle" ? "rounded-full" : "rounded-3xl"} ring-4 ring-white shadow-xl absolute`}
                 style={{
@@ -410,7 +363,10 @@ export default function JennyBeesCreation() {
                   transform: `translate(${decor.x}px, ${decor.y}px)`,
                   left: 0,
                   top: 0,
+                  objectFit: "cover",
+                  imageRendering: "auto",
                 }}
+                onError={(e) => { (e.currentTarget as HTMLImageElement).src = "/placeholder.png"; }}
               />
             )}
 
@@ -440,7 +396,13 @@ export default function JennyBeesCreation() {
           {/* RIGHT: Main hero image */}
           <div className="relative">
             <div className="aspect-[4/5] rounded-3xl overflow-hidden shadow-2xl ring-1 ring-black/5 bg-white">
-              <img src={cfg.hero.img} alt="Jen's candles hero" className="h-full w-full object-cover" />
+              <img
+                src={normalizeUrl(cfg.hero.img)}
+                alt="Jen's candles hero"
+                className="h-full w-full object-cover"
+                style={{ imageRendering: "auto" }}
+                onError={(e) => { (e.currentTarget as HTMLImageElement).src = "/placeholder.png"; }}
+              />
             </div>
           </div>
         </div>
@@ -448,7 +410,7 @@ export default function JennyBeesCreation() {
     );
   }
 
-  /** Shop section (memoized) */
+  /** Base shop, then memo to avoid re-render cost */
   const SectionShopBase: React.FC = () => (
     <section id="shop" className="max-w-6xl mx-auto px-4 py-16">
       <div className="flex items-end justify-between mb-8">
@@ -459,41 +421,51 @@ export default function JennyBeesCreation() {
       </div>
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {cfg.products.map((p) => (
-          <div key={p.id} className="group rounded-3xl bg-white ring-1 ring-neutral-200 shadow-sm hover:shadow-md transition overflow-hidden">
-            <div className="relative">
-              <img src={p.img} alt={p.name} className="h-56 w-full object-cover" />
-              {p.badge && (
-                <div className="absolute left-3 top-3 text-xs px-2 py-1 rounded-full border bg-white/90" style={{ borderColor: "#e5e5e5", color: theme.black }}>
-                  {p.badge}
-                </div>
-              )}
-            </div>
-            <div className="p-4">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <h3 className="font-semibold tracking-tight">{p.name}</h3>
-                  <p className="text-sm text-neutral-600">{p.notes}</p>
-                </div>
-                <div className="font-medium">{priceFmt(p.price)}</div>
+        {cfg.products.map((p) => {
+          const out = (p.qty ?? 9999) <= 0;
+          return (
+            <div key={p.id} className="group rounded-3xl bg-white ring-1 ring-neutral-200 shadow-sm hover:shadow-md transition overflow-hidden">
+              <div className="relative">
+                <img
+                  src={normalizeUrl(p.img)}
+                  alt={p.name}
+                  className="h-56 w-full object-cover"
+                  style={{ imageRendering: "auto" }}
+                  onError={(e) => { (e.currentTarget as HTMLImageElement).src = "/placeholder.png"; }}
+                />
+                {p.badge && (
+                  <div className="absolute left-3 top-3 text-xs px-2 py-1 rounded-full border bg-white/90" style={{ borderColor: "#e5e5e5", color: theme.black }}>
+                    {p.badge}
+                  </div>
+                )}
               </div>
-              <div className="mt-4 flex gap-2">
-                <button
-                  className="flex-1 px-4 py-2 rounded-xl text-sm font-medium shadow bg-clip-padding transition hover:brightness-[1.04] hover:shadow-md"
-                  style={{ backgroundImage: `linear-gradient(135deg, ${theme.roseMetalStart}, ${theme.roseMetalMid} 40%, ${theme.roseMetalDeep})`, color: theme.white }}
-                  onClick={() =>
-                    cart.add({ id: idFromName(p.name), name: p.name, price: p.price, image: p.img }, p.defaultQty ?? 1)
-                  }
-                >
-                  Add to cart
-                </button>
-                <button className="px-4 py-2 rounded-xl border text-sm" style={{ borderColor: "#e5e5e5" }}>
-                  Details
-                </button>
+              <div className="p-4">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <h3 className="font-semibold tracking-tight">{p.name}</h3>
+                    <p className="text-sm text-neutral-600">{p.notes}</p>
+                  </div>
+                  <div className="font-medium">{priceFmt(p.price)}</div>
+                </div>
+                <div className="mt-4 flex gap-2">
+                  <button
+                    disabled={out}
+                    className="flex-1 px-4 py-2 rounded-xl text-sm font-medium shadow bg-clip-padding transition hover:brightness-[1.04] hover:shadow-md disabled:opacity-50"
+                    style={{ backgroundImage: `linear-gradient(135deg, ${theme.roseMetalStart}, ${theme.roseMetalMid} 40%, ${theme.roseMetalDeep})`, color: theme.white }}
+                    onClick={() =>
+                      cart.add({ id: idFromName(p.name), name: p.name, price: p.price, image: p.img }, p.defaultQty ?? 1)
+                    }
+                  >
+                    {out ? "Sold out" : "Add to cart"}
+                  </button>
+                  <button className="px-4 py-2 rounded-xl border text-sm" style={{ borderColor: "#e5e5e5" }}>
+                    Details
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       <div className="mt-6 text-center text-sm text-neutral-600">
@@ -576,8 +548,8 @@ export default function JennyBeesCreation() {
             <div className="rounded-2xl p-5 ring-1 ring-neutral-200">
               <div className="font-semibold">Shipping</div>
               <ul className="mt-2 space-y-2">
-                <li>• Free U.S. shipping on orders $50+</li>
-                <li>• Flat rate under $50</li>
+                <li>• Free U.S. shipping on orders $35+</li>
+                <li>• Flat rate under $35</li>
                 <li>• Orders ship in 2–4 business days</li>
               </ul>
             </div>
@@ -595,117 +567,34 @@ export default function JennyBeesCreation() {
   }
 
   function SectionContact() {
-  const [form, setForm] = React.useState({
-    name: "",
-    email: "",
-    subject: "",
-    message: "",
-    company: "", // honeypot
-  });
-  const [status, setStatus] = React.useState<"idle"|"sending"|"ok"|"err">("idle");
-  const [errMsg, setErrMsg] = React.useState<string>("");
-
-  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setErrMsg("");
-    setStatus("sending");
-    try {
-      const res = await fetch("/api/contact", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
-      const json = await res.json();
-      if (!res.ok || !json?.ok) {
-        throw new Error(json?.error || `Send failed (${res.status})`);
-      }
-      setStatus("ok");
-      setForm({ name: "", email: "", subject: "", message: "", company: "" });
-    } catch (err: any) {
-      setStatus("err");
-      setErrMsg(err?.message || "Something went wrong.");
-    }
-  }
-
-  return (
-    <section id="contact" className="bg-white">
-      <div className="max-w-6xl mx-auto px-4 py-16 grid md:grid-cols-2 gap-8">
-        <div>
-          <h2 className="text-2xl md:text-3xl font-semibold tracking-tight">Wholesale & Custom</h2>
-          <p className="text-neutral-600 mt-2">Boutiques, corporate gifts, wedding favors — we’d love to collaborate.</p>
-          <ul className="mt-4 text-neutral-700 text-sm space-y-2">
-            <li>▪️ Minimums start at 24 units per scent</li>
-            <li>▪️ 2–3 week lead time for customs</li>
-            <li>▪️ Private label available</li>
-          </ul>
-        </div>
-
-        <form onSubmit={onSubmit} className="rounded-2xl p-6 ring-1 ring-neutral-200" style={{ background: theme.cream }}>
-          {/* Honeypot */}
-          <input
-            type="text"
-            name="company"
-            autoComplete="off"
-            tabIndex={-1}
-            value={form.company}
-            onChange={(e) => setForm({ ...form, company: e.target.value })}
-            className="hidden"
-          />
-
-          <div className="grid sm:grid-cols-2 gap-4">
-            <input
-              required
-              placeholder="Name"
-              className="px-3 py-2 rounded-xl ring-1 ring-neutral-300 focus:ring-2 outline-none bg-white"
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-            />
-            <input
-              required
-              type="email"
-              placeholder="Email"
-              className="px-3 py-2 rounded-xl ring-1 ring-neutral-300 focus:ring-2 outline-none bg-white"
-              value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
-            />
+    return (
+      <section id="contact" className="bg-white">
+        <div className="max-w-6xl mx-auto px-4 py-16 grid md:grid-cols-2 gap-8">
+          <div>
+            <h2 className="text-2xl md:text-3xl font-semibold tracking-tight">Wholesale & Custom</h2>
+            <p className="text-neutral-600 mt-2">Boutiques, corporate gifts, wedding favors — we’d love to collaborate.</p>
+            <ul className="mt-4 text-neutral-700 text-sm space-y-2">
+              <li>▪️ Minimums start at 24 units per scent</li>
+              <li>▪️ 2–3 week lead time for customs</li>
+              <li>▪️ Private label available</li>
+            </ul>
           </div>
-
-          <input
-            placeholder="Subject"
-            className="mt-4 w-full px-3 py-2 rounded-xl ring-1 ring-neutral-300 focus:ring-2 outline-none bg-white"
-            value={form.subject}
-            onChange={(e) => setForm({ ...form, subject: e.target.value })}
-          />
-          <textarea
-            required
-            placeholder="Tell us about your project"
-            rows={5}
-            className="mt-4 w-full px-3 py-2 rounded-xl ring-1 ring-neutral-300 focus:ring-2 outline-none bg-white"
-            value={form.message}
-            onChange={(e) => setForm({ ...form, message: e.target.value })}
-          />
-
-          <button
-            type="submit"
-            disabled={status === "sending"}
-            className="mt-4 px-5 py-3 rounded-xl font-medium disabled:opacity-60"
-            style={{ backgroundImage: `linear-gradient(135deg, ${theme.roseMetalStart}, ${theme.roseMetalMid} 40%, ${theme.roseMetalDeep})`, color: theme.white }}
-          >
-            {status === "sending" ? "Sending…" : "Send"}
-          </button>
-
-          {status === "ok" && (
-            <div className="mt-3 text-sm text-green-700">Thanks! We’ll be in touch shortly.</div>
-          )}
-          {status === "err" && (
-            <div className="mt-3 text-sm text-red-600">Couldn’t send: {errMsg}</div>
-          )}
-        </form>
-      </div>
-    </section>
-  );
-}
-
+          <form className="rounded-2xl p-6 ring-1 ring-neutral-200" style={{ background: theme.cream }}>
+            <div className="grid sm:grid-cols-2 gap-4">
+              <input placeholder="Name" className="px-4 py-3 rounded-xl ring-1 ring-neutral-300 focus:ring-2 outline-none" />
+              <input placeholder="Email" className="px-4 py-3 rounded-xl ring-1 ring-neutral-300 focus:ring-2 outline-none" />
+            </div>
+            <input placeholder="Subject" className="mt-4 w-full px-4 py-3 rounded-xl ring-1 ring-neutral-300 focus:ring-2 outline-none" />
+            <textarea placeholder="Tell us about your project" rows={5} className="mt-4 w-full px-4 py-3 rounded-xl ring-1 ring-neutral-300 focus:ring-2 outline-none" />
+            <button type="button" className="mt-4 px-5 py-3 rounded-xl font-medium"
+              style={{ backgroundImage: `linear-gradient(135deg, ${theme.roseMetalStart}, ${theme.roseMetalMid} 40%, ${theme.roseMetalDeep})`, color: theme.white }}>
+              Send
+            </button>
+          </form>
+        </div>
+      </section>
+    );
+  }
 
   /** ===== Section map ===== */
   const SectionMap: Record<SectionId, React.ComponentType> = {
@@ -810,23 +699,38 @@ export default function JennyBeesCreation() {
                   />
                 </div>
 
-                <ImageUploadField
-                  label="Hero image"
-                  value={cfg.hero.img}
-                  onChange={(url) => setCfgField("hero", { ...cfg.hero, img: url })}
-                  onDropFile={uploadFile}
-                />
+                {/* Hero image */}
+                <div className="grid gap-2">
+                  <label className="text-xs font-medium">Hero image</label>
+                  <div
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => onDropToField(e, null, (v) => setCfgField("hero", { ...cfg.hero, img: v }))}
+                    className="rounded border p-3 text-sm bg-neutral-50"
+                    style={{ borderColor: "#e5e5e5" }}
+                    title="Drag an image here"
+                  >
+                    <div className="flex gap-3">
+                      <input
+                        className="flex-1 px-3 py-2 rounded border bg-white"
+                        style={{ borderColor: "#e5e5e5" }}
+                        value={cfg.hero.img}
+                        onChange={(e) => setCfgField("hero", { ...cfg.hero, img: e.target.value })}
+                        placeholder="/images/jen/hero.jpg or https://…"
+                      />
+                      <label className="px-3 py-2 rounded border cursor-pointer" style={{ borderColor: "#e5e5e5" }}>
+                        {uploading["adhoc"] ? "Uploading…" : "Browse…"}
+                        <input type="file" accept="image/*" hidden onChange={(ev) => onBrowseFile(ev, null, (v) => setCfgField("hero", { ...cfg.hero, img: v }))} />
+                      </label>
+                    </div>
+                    {isBlobUrl(cfg.hero.img) && (
+                      <div className="text-xs text-red-600 mt-1">Finish upload first (no blob URLs).</div>
+                    )}
+                  </div>
+                </div>
 
                 {/* Decor image controls */}
                 <div className="mt-4 grid gap-2">
-                  <ImageUploadField
-                    label="Decorative image (left of heading)"
-                    value={cfg.heroDecor.img}
-                    onChange={(url) => setCfgField("heroDecor", { ...cfg.heroDecor, img: url })}
-                    onDropFile={uploadFile}
-                    note="Tip: try 200–260px size; use the X/Y controls below to position."
-                  />
-
+                  <div className="text-xs font-medium">Decorative image (left of heading)</div>
                   <div className="flex items-center gap-3">
                     <label className="flex items-center gap-2 text-xs">
                       <input
@@ -886,6 +790,38 @@ export default function JennyBeesCreation() {
                         }
                       />
                     </label>
+                  </div>
+
+                  <div
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => onDropToField(e, null, (v) => setCfgField("heroDecor", { ...cfg.heroDecor, img: v }))}
+                    className="rounded border p-3 text-sm bg-neutral-50"
+                    style={{ borderColor: "#e5e5e5" }}
+                    title="Drag an image here"
+                  >
+                    <div className="flex gap-3">
+                      <input
+                        className="flex-1 px-2 py-1 rounded border bg-white"
+                        style={{ borderColor: "#e5e5e5" }}
+                        value={cfg.heroDecor.img}
+                        onChange={(e) => setCfgField("heroDecor", { ...cfg.heroDecor, img: e.target.value })}
+                        placeholder="/images/… or https://…"
+                      />
+                      <label className="px-2 py-1 rounded border cursor-pointer text-sm" style={{ borderColor: "#e5e5e5" }}>
+                        {uploading["adhoc"] ? "Uploading…" : "Browse…"}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          hidden
+                          onChange={(ev) =>
+                            onBrowseFile(ev, null, (v) => setCfgField("heroDecor", { ...cfg.heroDecor, img: v }))
+                          }
+                        />
+                      </label>
+                    </div>
+                    {isBlobUrl(cfg.heroDecor.img) && (
+                      <div className="text-xs text-red-600 mt-1">Finish upload first (no blob URLs).</div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -955,18 +891,33 @@ export default function JennyBeesCreation() {
                       step={1}
                       value={p.defaultQty ?? 1}
                       onChange={(e) => { captureCaret(p.id, "defaultQty", e); handleProductChange(i, "defaultQty", Math.max(1, Number(e.target.value || 1))); }}
-                      placeholder="Qty"
+                      placeholder="Qty (add to cart)"
                     />
-
-                    <div className="md:col-span-3">
-                      <ImageUploadField
-                        label="Product image"
-                        value={p.img}
-                        onChange={(url) => handleProductChange(i, "img", url)}
-                        onDropFile={uploadFile}
-                      />
+                    <div
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={(e) => onDropToField(e, i)}
+                      className="md:col-span-3 rounded border p-1 bg-neutral-50"
+                      style={{ borderColor: "#e5e5e5" }}
+                      title="Drag an image here"
+                    >
+                      <div className="flex gap-3">
+                        <input
+                          ref={(el) => { inputRefs.current[p.id] ||= {}; inputRefs.current[p.id].img = el; }}
+                          className="flex-1 px-2 py-1 rounded border bg-white"
+                          style={{ borderColor: "#e5e5e5" }}
+                          value={p.img}
+                          onChange={(e) => { captureCaret(p.id, "img", e); handleProductChange(i, "img", e.target.value); }}
+                          placeholder="/images/… or https://…"
+                        />
+                        <label className="px-2 py-1 rounded border cursor-pointer text-sm" style={{ borderColor: "#e5e5e5" }}>
+                          {uploading[`product:${i}:img`] ? "Uploading…" : "Browse…"}
+                          <input type="file" accept="image/*" hidden onChange={(ev) => onBrowseFile(ev, i)} />
+                        </label>
+                      </div>
+                      {isBlobUrl(p.img) && (
+                        <div className="text-xs text-red-600 mt-1">Finish upload first (no blob URLs).</div>
+                      )}
                     </div>
-
                     <div className="flex justify-end ml-3 md:ml-0">
                       <button
                         className="px-2 py-1 text-xs rounded border text-red-600"
@@ -1049,14 +1000,19 @@ export default function JennyBeesCreation() {
     <div className="min-h-screen" style={{ color: theme.black, backgroundColor: "#fffff0" }}>
       {/* Announcement */}
       <div className="w-full text-center text-xs md:text-sm py-2" style={{ background: theme.black, color: theme.white }}>
-        ✨ Free shipping on orders $50+ • Hand-poured in Georgia
+        ✨ Free shipping on orders $35+ • Hand-poured in Georgia
       </div>
 
       {/* Header */}
       <header className="sticky top-0 z-30 backdrop-blur supports-[backdrop-filter]:bg-white/70 bg-white/80 border-b" style={{ borderColor: "#e5e5e5" }}>
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img src={cfg.logo?.src} alt={cfg.logo?.alt || "Logo"} className="h-9 w-9 rounded-full ring-1 ring-black/5 object-contain bg-white" />
+            <img
+              src={normalizeUrl(cfg.logo?.src)}
+              alt={cfg.logo?.alt || "Logo"}
+              className="h-9 w-9 rounded-full ring-1 ring-black/5 object-contain bg-white"
+              onError={(e) => { (e.currentTarget as HTMLImageElement).src = "/placeholder.png"; }}
+            />
             <div className="flex flex-col">
               <span
                 className="text-2xl font-semibold bg-clip-text text-transparent"
