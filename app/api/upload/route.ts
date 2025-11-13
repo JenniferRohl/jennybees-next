@@ -1,8 +1,10 @@
 // app/api/upload/route.ts
 import { NextResponse } from "next/server";
 import { put } from "@vercel/blob";
+export const runtime = "nodejs";        // Node functions allow larger payloads than Edge
+export const dynamic = "force-dynamic"; // don’t prerender this route
+export const maxDuration = 60;          // (optional) plenty of time to stream/put
 
-export const runtime = "nodejs"; // required for file I/O
 
 export async function POST(req: Request) {
   try {

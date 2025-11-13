@@ -293,6 +293,36 @@ export default function JennyBeesCreation() {
       writePreview(nxt);
       return nxt;
     });
+async function shrinkImageIfNeeded(file: File, opts?: { maxSide?: number; quality?: number }): Promise<File> {
+  const maxSide = opts?.maxSide ?? 1600;   // shrink long side to 1600px
+  const quality = opts?.quality ?? 0.85;   // JPEG quality
+  if (!file.type.startsWith("image/")) return file;
+
+  // If it's already small (< 1.5 MB), skip
+  if (file.size < 1.5 * 1024 * 1024) return file;
+
+  const bitmap = await createImageBitmap(file);
+  let { width, height } = bitmap;
+  const scale = Math.min(1, maxSide / Math.max(width, height));
+  if (scale < 1) {
+    width = Math.round(width * scale);
+    height = Math.round(height * scale);
+  } else {
+    // not big enough to shrink — but maybe it’s highly compressed already
+    // if still too large the server will handle; return original
+    return file;
+  }
+
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d")!;
+  ctx.drawImage(bitmap, 0, 0, width, height);
+
+  // Export as JPEG to keep size down
+  const blob: Blob = await new Promise((res) => canvas.toBlob((b) => res(b!), "image/jpeg", quality));
+  return new File([blob], (file.name.replace(/\.[^.]+$/, "") || "image") + ".jpg", { type: "image/jpeg" });
+}
 
   /** Public uploader: ALWAYS store public URL, never blob */
   const onPickOrDropPublicUrl = async (
