@@ -3,7 +3,7 @@ import { CartProvider } from '../components/cart/CartContext';
 
 export const metadata = {
   title: "Jenny Bees Creation",
-  description: "Hand-poured soy-coconut candles by Jen.",
+  description: "Hand-poured soy-blend candles by Jen.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

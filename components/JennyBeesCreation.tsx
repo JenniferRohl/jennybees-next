@@ -87,7 +87,7 @@ const defaultConfig: Config = {
   logo: { src: "/images/logo.png", alt: "Jenny Bee's Creation logo" },
   hero: {
     heading: "Hand-Poured Candles That Bring Charm And Whimsy To Your Home!",
-    subheading: "Clean soy-coconut wax • phthalate-free fragrance • cotton wicks. Made by Jen in small batches.",
+    subheading: "Clean soy-blend wax • phthalate-free fragrance • cotton wicks. Made by Jen in small batches.",
     ctaText: "Shop the Collection",
     ctaSecondary: "About our process",
     img: "/images/jen/hero.jpg",
@@ -515,7 +515,7 @@ async function shrinkImageIfNeeded(file: File, opts?: { maxSide?: number; qualit
           </div>
           <div className="md:col-span-2 grid sm:grid-cols-2 gap-6">
             {[
-              { t: "Clean ingredients", d: "Soy-coconut wax, phthalate-free oils, cotton wicks." },
+              { t: "Clean ingredients", d: "Soy-blend wax, phthalate-free oils, cotton wicks." },
               { t: "Small batches", d: "Slow pour, careful cure (7–14 days) for amazing hot throw." },
               { t: "Test burned", d: "Each batch is test-burned for safety and performance." },
               { t: "Eco-minded", d: "Recyclable glass, paper labels, biodegradable fill." },
@@ -1030,7 +1030,7 @@ async function shrinkImageIfNeeded(file: File, opts?: { maxSide?: number; qualit
     <div className="min-h-screen" style={{ color: theme.black, backgroundColor: "#fffff0" }}>
       {/* Announcement */}
       <div className="w-full text-center text-xs md:text-sm py-2" style={{ background: theme.black, color: theme.white }}>
-        ✨ Free shipping on orders50+ • Hand-poured in Georgia
+        ✨ Free shipping on orders $50+ • Hand-poured in Georgia
       </div>
 
       {/* Header */}
