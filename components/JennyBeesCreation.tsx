@@ -533,34 +533,35 @@ async function shrinkImageIfNeeded(file: File, opts?: { maxSide?: number; qualit
   }
 
   function SectionSocial() {
-  const hasTikTok = !!cfg.social?.tiktok;
-  const hasFacebook = !!cfg.social?.facebook;
+  const hasTikTok = !!cfg.social.tiktok;
+  const hasFacebook = !!cfg.social.facebook;
 
-  // If no social links are set, don't render the section at all
+  // If there are no social links configured, hide the whole section
   if (!hasTikTok && !hasFacebook) return null;
 
   return (
-    <section id="social" className="max-w-6xl mx-auto px-4 py-16">
-      <div className="rounded-3xl overflow-hidden ring-1 ring-neutral-200 bg-white/90">
-        <div className="px-6 py-6 sm:px-8 sm:py-8 space-y-6">
-          {/* Heading + follow buttons */}
-          <div className="flex items-center justify-between gap-4 flex-wrap">
+    <section className="max-w-6xl mx-auto px-4 py-16">
+      <div className="rounded-3xl overflow-hidden ring-1 ring-neutral-200 bg-white/70 backdrop-blur-sm">
+        <div className="flex flex-col gap-6 p-6 md:p-10">
+          {/* Text + buttons row */}
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
-              <div className="text-sm font-semibold text-neutral-700">
+              <div className="text-sm font-semibold tracking-wide text-neutral-800">
                 Follow along 🐝
               </div>
-              <div className="text-sm text-neutral-500">
+              <p className="text-sm text-neutral-600 mt-1 max-w-xl">
                 Behind-the-scenes pours, new scent drops, and craft fair days.
-              </div>
+              </p>
             </div>
 
-            <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-2">
               {hasTikTok && (
                 <a
                   href={cfg.social.tiktok}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-medium border border-neutral-200 bg-white hover:bg-neutral-50"
+                  className="px-4 py-2 rounded-full border text-sm font-medium hover:bg-neutral-50 transition"
+                  style={{ borderColor: "#e5e5e5" }}
                 >
                   TikTok
                 </a>
@@ -571,7 +572,8 @@ async function shrinkImageIfNeeded(file: File, opts?: { maxSide?: number; qualit
                   href={cfg.social.facebook}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-medium border border-neutral-200 bg-white hover:bg-neutral-50"
+                  className="px-4 py-2 rounded-full border text-sm font-medium hover:bg-neutral-50 transition"
+                  style={{ borderColor: "#e5e5e5" }}
                 >
                   Facebook
                 </a>
@@ -579,27 +581,30 @@ async function shrinkImageIfNeeded(file: File, opts?: { maxSide?: number; qualit
             </div>
           </div>
 
-          {/* Embeds */}
-          {/* Embeds: only show on md+ screens to avoid huge blank areas on mobile */}
-<div className="hidden md:grid gap-6 md:grid-cols-2 mt-4">
-  {hasTikTok && (
-    <div className="rounded-2xl overflow-hidden bg-neutral-50">
-      <TikTokEmbed url={cfg.social.tiktok} />
-    </div>
-  )}
+          {/* Embeds — desktop / tablet only */}
+          {(hasTikTok || hasFacebook) && (
+            <div className="hidden md:grid gap-6 md:grid-cols-2 mt-4">
+              {hasTikTok && (
+                <div className="rounded-2xl overflow-hidden bg-neutral-50">
+                  {/* ✅ Keep the working embed setup – just pass url */}
+                  <TikTokEmbed url={cfg.social.tiktok} />
+                </div>
+              )}
 
-  {hasFacebook && (
-    <div className="rounded-2xl overflow-hidden bg-neutral-50">
-      <FacebookEmbed url={cfg.social.facebook} />
-    </div>
-  )}
-</div>
-
+              {hasFacebook && (
+                <div className="rounded-2xl overflow-hidden bg-neutral-50">
+                  {/* ✅ Same for Facebook */}
+                  <FacebookEmbed url={cfg.social.facebook} />
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </section>
   );
 }
+
 
 
 
