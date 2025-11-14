@@ -115,6 +115,7 @@ const defaultConfig: Config = {
 
 export default function JennyBeesCreation() {
   const cart = useCart();
+const cartCount = cart?.items?.reduce((sum, item) => sum + (item.qty ?? 0), 0);
 
   /** Admin from URL (SSR-safe) */
   const searchParams = useSearchParams();
@@ -1033,50 +1034,64 @@ async function shrinkImageIfNeeded(file: File, opts?: { maxSide?: number; qualit
         ✨ Free shipping on orders $50+ • Hand-poured in Georgia
       </div>
 
-      <header className="sticky top-0 z-30 backdrop-blur supports-[backdrop-filter]:bg-white/70 bg-white/80 border-b" style={{ borderColor: "#e5e5e5" }}>
-  <div className="max-w-6xl mx-auto flex items-center justify-between px-3 py-2 sm:px-4 sm:py-4">
+      <header
+  className="sticky top-0 z-30 backdrop-blur supports-[backdrop-filter]:bg-white/70 bg-white/80 border-b"
+  style={{ borderColor: "#e5e5e5" }}
+>
+  <div className="max-w-6xl mx-auto px-3 sm:px-4 py-3 sm:py-4 flex items-center justify-between">
     <div className="flex items-center gap-3">
       <img
         src={normalizeUrl(cfg.logo?.src)}
         alt={cfg.logo?.alt || "Logo"}
-        className="h-9 w-9 rounded-full ring-1 ring-black/5 object-contain bg-white"
-        onError={(e) => { (e.currentTarget as HTMLImageElement).src = "/placeholder.png"; }}
+        className="h-8 w-8 sm:h-9 sm:w-9 rounded-full ring-1 ring-black/5 object-contain bg-white"
+        onError={(e) => {
+          (e.currentTarget as HTMLImageElement).src = "/placeholder.png";
+        }}
       />
-            <div className="flex flex-col">
-              <span
-                className="text-2xl font-semibold bg-clip-text text-transparent"
-                style={{ backgroundImage: `linear-gradient(135deg, ${theme.roseMetalStart}, ${theme.roseMetalMid} 40%, ${theme.roseMetalDeep})` }}
-              >
-                Jenny Bee&apos;s Creation
-              </span>
-            </div>
-          </div>
-          <nav className="hidden md:flex items-center gap-6 text-sm">
-            <a href="#shop" className="hover:opacity-80">Shop</a>
-            <a href="#about" className="hover:opacity-80">About</a>
-            <a href="#shipping" className="hover:opacity-80">Shipping</a>
-            <a href="#contact" className="hover:opacity-80">Contact</a>
-          </nav>
-          <div className="flex items-center gap-2 md:gap-3">
-            <a href={social.tiktok} target="_blank" rel="noreferrer" className="px-3 py-2 text-sm rounded-xl border" style={{ borderColor: "#e5e5e5" }}>
-              TikTok
-            </a>
-            <a href={social.facebook} target="_blank" rel="noreferrer" className="px-3 py-2 text-sm rounded-xl border hidden sm:inline-flex" style={{ borderColor: "#e5e5e5" }}>
-              Facebook
-            </a>
-            <a
-              href="#shop"
-              className="px-4 py-2 text-sm font-medium rounded-xl shadow bg-clip-padding"
-              style={{ backgroundImage: `linear-gradient(135deg, ${theme.roseMetalStart}, ${theme.roseMetalMid} 40%, ${theme.roseMetalDeep})`, color: theme.white }}
-            >
-              {cfg.header.ctaLabel}
-            </a>
-            <button onClick={() => cart.setOpen(true)} className="px-3 py-2 text-sm rounded-xl border" style={{ borderColor: "#e5e5e5" }}>
-              Cart ({cart.items.length})
-            </button>
-          </div>
-        </div>
-      </header>
+
+      {/* Title text */}
+      <div className="flex flex-col leading-tight">
+        <span className="text-lg sm:text-xl font-semibold" style={{ color: theme.black }}>
+          Jenny Bee's
+        </span>
+        <span className="text-lg sm:text-xl font-semibold -mt-1" style={{ color: theme.black }}>
+          Creation
+        </span>
+      </div>
+    </div>
+
+    {/* Buttons */}
+    <div className="flex items-center gap-2 sm:gap-3">
+      <a
+        href={cfg.social?.tiktok}
+        className="px-3 sm:px-4 py-2 rounded-xl border text-sm sm:text-base"
+        style={{ borderColor: "#e5e5e5" }}
+      >
+        TikTok
+      </a>
+
+      <a
+        href="#shop"
+        className="px-3 sm:px-4 py-2 rounded-xl text-sm sm:text-base shadow bg-clip-padding"
+        style={{
+          backgroundImage: `linear-gradient(135deg, ${theme.roseMetalStart}, ${theme.roseMetalMid} 40%, ${theme.roseMetalDeep})`,
+          color: theme.white,
+        }}
+      >
+        Shop Now
+      </a>
+
+      <a
+        href="#cart"
+        className="px-3 sm:px-4 py-2 rounded-xl border text-sm sm:text-base"
+        style={{ borderColor: "#e5e5e5" }}
+      >
+        Cart ({cartCount})
+      </a>
+    </div>
+  </div>
+</header>
+
 
       {/* ADMIN */}
       <AdminPanel />
