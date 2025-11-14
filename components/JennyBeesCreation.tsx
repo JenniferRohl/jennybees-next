@@ -580,19 +580,21 @@ async function shrinkImageIfNeeded(file: File, opts?: { maxSide?: number; qualit
           </div>
 
           {/* Embeds */}
-          <div className="grid gap-6 md:grid-cols-2">
-            {hasTikTok && (
-              <div className="rounded-2xl overflow-hidden bg-neutral-50">
-                <TikTokEmbed url={cfg.social.tiktok}/>
-              </div>
-            )}
+          {/* Embeds: only show on md+ screens to avoid huge blank areas on mobile */}
+<div className="hidden md:grid gap-6 md:grid-cols-2 mt-4">
+  {hasTikTok && (
+    <div className="rounded-2xl overflow-hidden bg-neutral-50">
+      <TikTokEmbed url={cfg.social.tiktok} />
+    </div>
+  )}
 
-            {hasFacebook && (
-              <div className="rounded-2xl overflow-hidden bg-neutral-50">
-                <FacebookEmbed url="{cfg.social.facebook}"/>
-              </div>
-            )}
-          </div>
+  {hasFacebook && (
+    <div className="rounded-2xl overflow-hidden bg-neutral-50">
+      <FacebookEmbed url={cfg.social.facebook} />
+    </div>
+  )}
+</div>
+
         </div>
       </div>
     </section>
