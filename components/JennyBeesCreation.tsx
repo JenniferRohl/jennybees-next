@@ -533,39 +533,54 @@ async function shrinkImageIfNeeded(file: File, opts?: { maxSide?: number; qualit
   }
 
   function SectionSocial() {
-    const hasFb = !!cfg.social.facebook;
-    return (
-      <section className="max-w-6xl mx-auto px-4 py-16">
-        <div className="rounded-3xl overflow-hidden ring-1 ring-neutral-200 bg-white p-6">
-          <div className="flex items-center justify-between gap-4 flex-wrap">
-            <div>
-              <div className="text-sm font-semibold">Follow along</div>
-              <div className="text-sm text-neutral-600">Behind-the-scenes pours, wicks, tests & restocks.</div>
+  const hasTikTok = !!cfg.social?.tiktok;
+  const hasFacebook = !!cfg.social?.facebook;
+
+  // If no social links are set, don't render the section
+  if (!hasTikTok && !hasFacebook) return null;
+
+  return (
+    <section className="max-w-6xl mx-auto px-4 py-16">
+      <div className="rounded-3xl overflow-hidden ring-1 ring-neutral-200 bg-white/90">
+        <div className="flex items-center justify-between gap-4 flex-wrap px-6 py-6 sm:px-8 sm:py-8">
+          <div>
+            <div className="text-sm font-semibold text-neutral-700">
+              Follow along 🐝
             </div>
-            <div className="flex items-center gap-2">
-              <a href={cfg.social.tiktok} target="_blank" rel="noreferrer" className="px-4 py-2 rounded-xl border text-sm font-medium" style={{ borderColor: "#e5e5e5" }}>
-                TikTok
-              </a>
-              <a href={cfg.social.facebook} target="_blank" rel="noreferrer" className="px-4 py-2 rounded-xl border text-sm font-medium" style={{ borderColor: "#e5e5e5" }}>
-                Facebook
-              </a>
+            <div className="text-sm text-neutral-500">
+              Behind-the-scenes pours, new scent drops, and craft fair days.
             </div>
           </div>
 
-          <div className="mt-4 grid md:grid-cols-2 gap-4">
-            <TikTokEmbed url={cfg.social.tiktokPost || ""} ratio="9/16" />
-            {hasFb ? (
-              <FacebookEmbed url={cfg.social.facebook} kind="timeline" ratio="9/16" className="shadow-sm" />
-            ) : (
-              <div className="rounded-2xl bg-neutral-100 grid place-items-center text-neutral-500 text-sm aspect-[9/16]">
-                Add your Facebook page URL in the admin panel to show the feed.
-              </div>
+          <div className="flex items-center gap-3 flex-wrap">
+            {hasTikTok && (
+              <a
+                href={cfg.social.tiktok}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-medium border border-neutral-200 bg-white hover:bg-neutral-50"
+              >
+                TikTok
+              </a>
+            )}
+
+            {hasFacebook && (
+              <a
+                href={cfg.social.facebook}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-medium border border-neutral-200 bg-white hover:bg-neutral-50"
+              >
+                Facebook
+              </a>
             )}
           </div>
         </div>
-      </section>
-    );
-  }
+      </div>
+    </section>
+  );
+}
+
 
   function SectionShipping() {
     return (
