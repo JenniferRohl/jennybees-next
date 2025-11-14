@@ -1033,16 +1033,15 @@ async function shrinkImageIfNeeded(file: File, opts?: { maxSide?: number; qualit
         ✨ Free shipping on orders $50+ • Hand-poured in Georgia
       </div>
 
-      {/* Header */}
       <header className="sticky top-0 z-30 backdrop-blur supports-[backdrop-filter]:bg-white/70 bg-white/80 border-b" style={{ borderColor: "#e5e5e5" }}>
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <img
-              src={normalizeUrl(cfg.logo?.src)}
-              alt={cfg.logo?.alt || "Logo"}
-              className="h-9 w-9 rounded-full ring-1 ring-black/5 object-contain bg-white"
-              onError={(e) => { (e.currentTarget as HTMLImageElement).src = "/placeholder.png"; }}
-            />
+  <div className="max-w-6xl mx-auto flex items-center justify-between px-3 py-2 sm:px-4 sm:py-4">
+    <div className="flex items-center gap-3">
+      <img
+        src={normalizeUrl(cfg.logo?.src)}
+        alt={cfg.logo?.alt || "Logo"}
+        className="h-9 w-9 rounded-full ring-1 ring-black/5 object-contain bg-white"
+        onError={(e) => { (e.currentTarget as HTMLImageElement).src = "/placeholder.png"; }}
+      />
             <div className="flex flex-col">
               <span
                 className="text-2xl font-semibold bg-clip-text text-transparent"
