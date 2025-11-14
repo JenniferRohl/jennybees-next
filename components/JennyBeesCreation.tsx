@@ -536,14 +536,13 @@ async function shrinkImageIfNeeded(file: File, opts?: { maxSide?: number; qualit
   const hasTikTok = !!cfg.social.tiktok;
   const hasFacebook = !!cfg.social.facebook;
 
-  // If there are no social links configured, hide the whole section
   if (!hasTikTok && !hasFacebook) return null;
 
   return (
     <section className="max-w-6xl mx-auto px-4 py-16">
       <div className="rounded-3xl overflow-hidden ring-1 ring-neutral-200 bg-white/70 backdrop-blur-sm">
         <div className="flex flex-col gap-6 p-6 md:p-10">
-          {/* Text + buttons row */}
+          {/* Text + buttons */}
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
               <div className="text-sm font-semibold tracking-wide text-neutral-800">
@@ -581,19 +580,17 @@ async function shrinkImageIfNeeded(file: File, opts?: { maxSide?: number; qualit
             </div>
           </div>
 
-          {/* Embeds — desktop / tablet only */}
+          {/* Embeds – desktop / tablet only */}
           {(hasTikTok || hasFacebook) && (
             <div className="hidden md:grid gap-6 md:grid-cols-2 mt-4">
               {hasTikTok && (
                 <div className="rounded-2xl overflow-hidden bg-neutral-50">
-                  {/* ✅ Keep the working embed setup – just pass url */}
                   <TikTokEmbed url={cfg.social.tiktok} />
                 </div>
               )}
 
               {hasFacebook && (
                 <div className="rounded-2xl overflow-hidden bg-neutral-50">
-                  {/* ✅ Same for Facebook */}
                   <FacebookEmbed url={cfg.social.facebook} />
                 </div>
               )}
@@ -604,10 +601,6 @@ async function shrinkImageIfNeeded(file: File, opts?: { maxSide?: number; qualit
     </section>
   );
 }
-
-
-
-
   function SectionShipping() {
     return (
       <section id="shipping" className="bg-white border-y" style={{ borderColor: "#e5e5e5" }}>
