@@ -536,43 +536,61 @@ async function shrinkImageIfNeeded(file: File, opts?: { maxSide?: number; qualit
   const hasTikTok = !!cfg.social?.tiktok;
   const hasFacebook = !!cfg.social?.facebook;
 
-  // If no social links are set, don't render the section
+  // If no social links are set, don't render the section at all
   if (!hasTikTok && !hasFacebook) return null;
 
   return (
-    <section className="max-w-6xl mx-auto px-4 py-16">
+    <section id="social" className="max-w-6xl mx-auto px-4 py-16">
       <div className="rounded-3xl overflow-hidden ring-1 ring-neutral-200 bg-white/90">
-        <div className="flex items-center justify-between gap-4 flex-wrap px-6 py-6 sm:px-8 sm:py-8">
-          <div>
-            <div className="text-sm font-semibold text-neutral-700">
-              Follow along 🐝
+        <div className="px-6 py-6 sm:px-8 sm:py-8 space-y-6">
+          {/* Heading + follow buttons */}
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <div>
+              <div className="text-sm font-semibold text-neutral-700">
+                Follow along 🐝
+              </div>
+              <div className="text-sm text-neutral-500">
+                Behind-the-scenes pours, new scent drops, and craft fair days.
+              </div>
             </div>
-            <div className="text-sm text-neutral-500">
-              Behind-the-scenes pours, new scent drops, and craft fair days.
+
+            <div className="flex items-center gap-3 flex-wrap">
+              {hasTikTok && (
+                <a
+                  href={cfg.social.tiktok}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-medium border border-neutral-200 bg-white hover:bg-neutral-50"
+                >
+                  TikTok
+                </a>
+              )}
+
+              {hasFacebook && (
+                <a
+                  href={cfg.social.facebook}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-medium border border-neutral-200 bg-white hover:bg-neutral-50"
+                >
+                  Facebook
+                </a>
+              )}
             </div>
           </div>
 
-          <div className="flex items-center gap-3 flex-wrap">
+          {/* Embeds */}
+          <div className="grid gap-6 md:grid-cols-2">
             {hasTikTok && (
-              <a
-                href={cfg.social.tiktok}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-medium border border-neutral-200 bg-white hover:bg-neutral-50"
-              >
-                TikTok
-              </a>
+              <div className="rounded-2xl overflow-hidden bg-neutral-50">
+                <TikTokEmbed url={cfg.social.tiktok}/>
+              </div>
             )}
 
             {hasFacebook && (
-              <a
-                href={cfg.social.facebook}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-medium border border-neutral-200 bg-white hover:bg-neutral-50"
-              >
-                Facebook
-              </a>
+              <div className="rounded-2xl overflow-hidden bg-neutral-50">
+                <FacebookEmbed url="{cfg.social.facebook}"/>
+              </div>
             )}
           </div>
         </div>
@@ -580,6 +598,7 @@ async function shrinkImageIfNeeded(file: File, opts?: { maxSide?: number; qualit
     </section>
   );
 }
+
 
 
   function SectionShipping() {
