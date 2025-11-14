@@ -1081,13 +1081,15 @@ async function shrinkImageIfNeeded(file: File, opts?: { maxSide?: number; qualit
         Shop Now
       </a>
 
-      <a
-        href="#cart"
-        className="px-3 sm:px-4 py-2 rounded-xl border text-sm sm:text-base"
-        style={{ borderColor: "#e5e5e5" }}
-      >
-        Cart ({cartCount})
-      </a>
+      <button
+  type="button"
+  onClick={() => cart.setOpen(true)}
+  className="px-3 sm:px-4 py-2 rounded-xl border text-sm sm:text-base font-medium shadow-sm bg-white/80 hover:bg-white transition"
+  style={{ borderColor: "#e5e5e5" }}
+>
+  Cart ({cartCount})
+</button>
+
     </div>
   </div>
 </header>
