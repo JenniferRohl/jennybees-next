@@ -4,8 +4,7 @@ import * as React from "react";
 import { useSearchParams } from "next/navigation";
 import { useCart } from "./cart/CartContext";
 import CartDrawer from "./cart/CartDrawer";
-import TikTokEmbed from "./TikTokEmbed";
-import FacebookEmbed from "./FacebookEmbed";
+
 
 /** ===== THEME ===== */
 const theme = {
@@ -536,71 +535,87 @@ async function shrinkImageIfNeeded(file: File, opts?: { maxSide?: number; qualit
   const hasTikTok = !!cfg.social.tiktok;
   const hasFacebook = !!cfg.social.facebook;
 
+  // If nothing is configured, hide the section
   if (!hasTikTok && !hasFacebook) return null;
 
   return (
     <section className="max-w-6xl mx-auto px-4 py-16">
-      <div className="rounded-3xl overflow-hidden ring-1 ring-neutral-200 bg-white/70 backdrop-blur-sm">
-        <div className="flex flex-col gap-6 p-6 md:p-10">
-          {/* Text + buttons */}
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div>
-              <div className="text-sm font-semibold tracking-wide text-neutral-800">
-                Follow along 🐝
-              </div>
-              <p className="text-sm text-neutral-600 mt-1 max-w-xl">
-                Behind-the-scenes pours, new scent drops, and craft fair days.
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2">
-              {hasTikTok && (
-                <a
-                  href={cfg.social.tiktok}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="px-4 py-2 rounded-full border text-sm font-medium hover:bg-neutral-50 transition"
-                  style={{ borderColor: "#e5e5e5" }}
-                >
-                  TikTok
-                </a>
-              )}
-
-              {hasFacebook && (
-                <a
-                  href={cfg.social.facebook}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="px-4 py-2 rounded-full border text-sm font-medium hover:bg-neutral-50 transition"
-                  style={{ borderColor: "#e5e5e5" }}
-                >
-                  Facebook
-                </a>
-              )}
-            </div>
+      <div className="rounded-3xl border border-neutral-200 bg-white/80 backdrop-blur-sm shadow-sm">
+        <div className="px-6 py-8 md:px-10 md:py-10 flex flex-col gap-8">
+          {/* Text */}
+          <div className="text-center md:text-left">
+            <h2 className="text-xl md:text-2xl font-semibold tracking-tight text-neutral-900">
+              Follow us on social media
+            </h2>
+            <p className="mt-2 text-sm text-neutral-600 max-w-xl mx-auto md:mx-0">
+              Watch Jen pour, test, and pack candles in real time — plus new scent drops, restocks, and craft fair days.
+            </p>
           </div>
 
-          {/* Embeds – desktop / tablet only */}
-          {(hasTikTok || hasFacebook) && (
-            <div className="hidden md:grid gap-6 md:grid-cols-2 mt-4">
-              {hasTikTok && (
-                <div className="rounded-2xl overflow-hidden bg-neutral-50">
-                  <TikTokEmbed url={cfg.social.tiktok} />
+          {/* Icons row */}
+          <div className="flex flex-wrap items-center justify-center md:justify-start gap-6">
+            {hasTikTok && (
+              <a
+                href={cfg.social.tiktok}
+                target="_blank"
+                rel="noreferrer"
+                className="group flex flex-col items-center gap-2 text-sm"
+              >
+                <div className="relative h-14 w-14 rounded-full p-[2px] bg-gradient-to-br from-[#d4a5a5] via-[#b87979] to-[#805050] shadow-md group-hover:shadow-lg transition">
+                  <div className="h-full w-full rounded-full bg-white flex items-center justify-center">
+                    {/* TikTok icon */}
+                    <svg
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
+                      className="h-7 w-7 text-neutral-900 group-hover:translate-y-0.5 transition-transform"
+                    >
+                      <path
+                        fill="currentColor"
+                        d="M19.6 8.3c-1.6-.1-3-.8-4.1-1.9-1-1-1.6-2.3-1.7-3.7h-3c.1 1.4-.3 2.8-1.2 3.9-.9 1.1-2.2 1.8-3.6 1.9v3.1c.9 0 1.7-.3 2.5-.8.7-.5 1.2-1.2 1.5-2v7.8c0 1 .4 2 1.1 2.7.7.7 1.7 1.1 2.7 1.1 1 0 2-.4 2.7-1.1.7-.7 1.1-1.7 1.1-2.7V9.6c1 .7 2.2 1.1 3.4 1.2V7.7c-.6 0-1.2-.1-1.8-.3Z"
+                      />
+                    </svg>
+                  </div>
                 </div>
-              )}
+                <span className="text-neutral-800 group-hover:text-neutral-950 font-medium">
+                  TikTok
+                </span>
+              </a>
+            )}
 
-              {hasFacebook && (
-                <div className="rounded-2xl overflow-hidden bg-neutral-50">
-                  <FacebookEmbed url={cfg.social.facebook} />
+            {hasFacebook && (
+              <a
+                href={cfg.social.facebook}
+                target="_blank"
+                rel="noreferrer"
+                className="group flex flex-col items-center gap-2 text-sm"
+              >
+                <div className="relative h-14 w-14 rounded-full p-[2px] bg-gradient-to-br from-[#d4a5a5] via-[#b87979] to-[#805050] shadow-md group-hover:shadow-lg transition">
+                  <div className="h-full w-full rounded-full bg-white flex items-center justify-center">
+                    {/* Facebook icon */}
+                    <svg
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
+                      className="h-7 w-7 text-neutral-900 group-hover:translate-y-0.5 transition-transform"
+                    >
+                      <path
+                        fill="currentColor"
+                        d="M13.5 22v-7h2.5l.4-3h-2.9V9.3c0-.9.3-1.5 1.6-1.5H16V5.2C15.7 5.2 14.9 5.1 14 5.1 11.9 5.1 10.5 6.3 10.5 8.9V12H8v3h2.5v7h3Z"
+                      />
+                    </svg>
+                  </div>
                 </div>
-              )}
-            </div>
-          )}
+                <span className="text-neutral-800 group-hover:text-neutral-950 font-medium">
+                  Facebook
+                </span>
+              </a>
+            )}
+          </div>
         </div>
       </div>
     </section>
   );
 }
+
   function SectionShipping() {
     return (
       <section id="shipping" className="bg-white border-y" style={{ borderColor: "#e5e5e5" }}>
