@@ -1,6 +1,14 @@
 'use client';
 import * as React from 'react';
 import { useCart } from './CartContext';
+type CartDrawerProps = {
+  // 💰 new props for totals
+  cartSubtotal: number;
+  shipping: number;
+  tax: number;
+  grandTotal: number;
+};
+
 
 /** If your header has a combined announcement+header height, pad the drawer */
 const HEADER_OFFSET_PX = 96;
@@ -38,7 +46,12 @@ function releaseMany(id: string, n: number) {
   saveResv(map);
 }
 
-export default function CartDrawer() {
+export default function CartDrawer({
+  cartSubtotal,
+  shipping,
+  tax,
+  grandTotal,
+}: CartDrawerProps) {
   const { items, remove, setQty, total, open, setOpen, ready } = useCart();
 
   // at top of component body
@@ -177,10 +190,34 @@ async function checkout() {
 
         {/* Footer */}
         <div className="mt-4 border-t pt-3">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-neutral-600">Subtotal</span>
-            <span className="font-semibold">${total.toFixed(2)}</span>
-          </div>
+          <div className="space-y-1 text-sm text-neutral-700">
+  <div className="flex items-center justify-between">
+    <span>Subtotal</span>
+    <span className="font-semibold">${cartSubtotal.toFixed(2)}</span>
+  </div>
+
+  <div className="flex items-center justify-between">
+    <span>Shipping</span>
+    <span>
+      {shipping === 0
+        ? "Free"
+        : `$${shipping.toFixed(2)}`}
+    </span>
+  </div>
+
+  <div className="flex items-center justify-between">
+    <span>Estimated tax</span>
+    <span>${tax.toFixed(2)}</span>
+  </div>
+
+  <div className="flex items-center justify-between pt-1 border-t border-neutral-200 mt-2">
+    <span className="font-semibold">Total</span>
+    <span className="font-semibold">
+      ${grandTotal.toFixed(2)}
+    </span>
+  </div>
+</div>
+
 
           <button
   onClick={checkout}

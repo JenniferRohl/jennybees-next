@@ -47,7 +47,13 @@ type Config = {
   heroDecor: HeroDecor;
   social: { tiktok: string; facebook: string; tiktokPost?: string };
   products: Product[];
+  checkout: {
+    shippingFlat: number;
+    freeShippingThreshold: number;
+    taxRateGA: number;
+  };
 };
+
 
 /** ===== UTIL ===== */
 const STORAGE_KEY = "jennybees_config_v6";
@@ -91,6 +97,11 @@ const defaultConfig: Config = {
     ctaSecondary: "About our process",
     img: "/images/jen/hero.jpg",
   },
+  checkout: {
+    shippingFlat: 6,          // default $6 flat shipping
+    freeShippingThreshold: 50, // free shipping over $50 (cart subtotal)
+    taxRateGA: 0.08,          // 8% – adjust to your exact Georgia rate
+  },
   heroDecor: {
     img: "/images/jen/market-stall.jpg",
     x: -60,
@@ -115,16 +126,35 @@ const defaultConfig: Config = {
 export default function JennyBeesCreation() {
   const cart = useCart();
 const cartCount = cart?.items?.reduce((sum, item) => sum + (item.qty ?? 0), 0);
+const cartSubtotal = cart.items?.reduce(
+  (sum, item) => sum + item.price * item.qty,
+  0
+) ?? 0;
+/** Config state — start from defaults, hydrate from localStorage */
+  const [cfg, setCfg] = React.useState<Config>(() => ({
+    ...defaultConfig,
+    products: withStableIds(defaultConfig.products),
+  }));
+// Simple shipping: flat rate unless subtotal >= free threshold
+const shipping = cartSubtotal >= cfg.checkout.freeShippingThreshold
+  ? 0
+  : cfg.checkout.shippingFlat;
+
+// Simple tax: GA only (based on shipping state you collected)
+const [shippingState, setShippingState] = React.useState<string | null>(null);
+
+// TODO: Later we can hydrate `shippingState` from shipping form / localStorage
+const taxRate = shippingState === "GA" ? cfg.checkout.taxRateGA : 0;
+const tax = Math.round((cartSubtotal + shipping) * taxRate * 100) / 100;
+
+const grandTotal = cartSubtotal + shipping + tax;
+
 
   /** Admin from URL (SSR-safe) */
   const searchParams = useSearchParams();
   const admin = searchParams.get("admin") === "1";
 
-  /** Config state — start from defaults, hydrate from localStorage */
-  const [cfg, setCfg] = React.useState<Config>(() => ({
-    ...defaultConfig,
-    products: withStableIds(defaultConfig.products),
-  }));
+  
 
   /** Which editor tab is open in Admin */
   const [activeSection, setActiveSection] = React.useState<SectionId>("hero");
@@ -1290,7 +1320,13 @@ function AdminGate() {
       </footer>
 
       {/* Cart Drawer */}
-      <CartDrawer />
+      <CartDrawer
+  cartSubtotal={cartSubtotal}
+  shipping={shipping}
+  tax={tax}
+  grandTotal={grandTotal}
+/>
+
     </div>
   );
 }
