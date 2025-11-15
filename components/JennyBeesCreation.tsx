@@ -4,7 +4,7 @@ import * as React from "react";
 import { useSearchParams } from "next/navigation";
 import { useCart } from "./cart/CartContext";
 import CartDrawer from "./cart/CartDrawer";
-
+import  { Facebook } from "lucide-react";
 
 /** ===== THEME ===== */
 const theme = {
@@ -530,6 +530,16 @@ async function shrinkImageIfNeeded(file: File, opts?: { maxSide?: number; qualit
       </section>
     );
   }
+const TikTokIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 256 256"
+    fill="currentColor"
+    className="h-6 w-6"
+  >
+    <path d="M240 80v32a80.09 80.09 0 01-48-16v80a80 80 0 11-80-80 79.42 79.42 0 0148 16V80a80.09 80.09 0 01-48-16 80 80 0 0180 0 80.09 80.09 0 0048 16z" />
+  </svg>
+);
 
   function SectionSocial() {
   const hasTikTok = !!cfg.social.tiktok;
@@ -560,22 +570,10 @@ async function shrinkImageIfNeeded(file: File, opts?: { maxSide?: number; qualit
                 target="_blank"
                 rel="noreferrer"
                 className="group flex flex-col items-center gap-2 text-sm"
-              >
-                <div className="relative h-14 w-14 rounded-full p-[2px] bg-gradient-to-br from-[#d4a5a5] via-[#b87979] to-[#805050] shadow-md group-hover:shadow-lg transition">
-                  <div className="h-full w-full rounded-full bg-white flex items-center justify-center">
-                    {/* TikTok icon */}
-                    <svg
-                      viewBox="0 0 24 24"
-                      aria-hidden="true"
-                      className="h-7 w-7 text-neutral-900 group-hover:translate-y-0.5 transition-transform"
-                    >
-                      <path
-                        fill="currentColor"
-                        d="M19.6 8.3c-1.6-.1-3-.8-4.1-1.9-1-1-1.6-2.3-1.7-3.7h-3c.1 1.4-.3 2.8-1.2 3.9-.9 1.1-2.2 1.8-3.6 1.9v3.1c.9 0 1.7-.3 2.5-.8.7-.5 1.2-1.2 1.5-2v7.8c0 1 .4 2 1.1 2.7.7.7 1.7 1.1 2.7 1.1 1 0 2-.4 2.7-1.1.7-.7 1.1-1.7 1.1-2.7V9.6c1 .7 2.2 1.1 3.4 1.2V7.7c-.6 0-1.2-.1-1.8-.3Z"
-                      />
-                    </svg>
-                  </div>
-                </div>
+             >
+    <div className="h-12 w-12 rounded-full border flex items-center justify-center bg-white">
+      <TikTokIcon />
+    </div>
                 <span className="text-neutral-800 group-hover:text-neutral-950 font-medium">
                   TikTok
                 </span>
@@ -589,21 +587,12 @@ async function shrinkImageIfNeeded(file: File, opts?: { maxSide?: number; qualit
                 rel="noreferrer"
                 className="group flex flex-col items-center gap-2 text-sm"
               >
-                <div className="relative h-14 w-14 rounded-full p-[2px] bg-gradient-to-br from-[#d4a5a5] via-[#b87979] to-[#805050] shadow-md group-hover:shadow-lg transition">
-                  <div className="h-full w-full rounded-full bg-white flex items-center justify-center">
-                    {/* Facebook icon */}
-                    <svg
-                      viewBox="0 0 24 24"
-                      aria-hidden="true"
-                      className="h-7 w-7 text-neutral-900 group-hover:translate-y-0.5 transition-transform"
-                    >
-                      <path
-                        fill="currentColor"
-                        d="M13.5 22v-7h2.5l.4-3h-2.9V9.3c0-.9.3-1.5 1.6-1.5H16V5.2C15.7 5.2 14.9 5.1 14 5.1 11.9 5.1 10.5 6.3 10.5 8.9V12H8v3h2.5v7h3Z"
-                      />
-                    </svg>
-                  </div>
-                </div>
+                
+                  <div className="h-12 w-12 rounded-full border flex items-center justify-center">
+  <Facebook className="h-6 w-6 text-neutral-700" style={{ aspectRatio: "1 / 1" }} />
+</div>
+
+              
                 <span className="text-neutral-800 group-hover:text-neutral-950 font-medium">
                   Facebook
                 </span>
