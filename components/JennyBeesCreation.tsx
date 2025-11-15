@@ -674,6 +674,111 @@ const TikTokIcon = () => (
     shipping: SectionShipping,
     contact: SectionContact,
   };
+function AdminGate() {
+  const [password, setPassword] = React.useState("");
+  const [isAdmin, setIsAdmin] = React.useState(false);
+  const [checking, setChecking] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
+  const [loading, setLoading] = React.useState(false);
+
+  // On mount, ask the server if we already have the admin cookie
+  React.useEffect(() => {
+    let cancelled = false;
+
+    async function check() {
+      try {
+        const res = await fetch("/api/admin/check", { cache: "no-store" });
+        const data = await res.json();
+        if (!cancelled) {
+          setIsAdmin(!!data.authenticated);
+        }
+      } catch (err) {
+        console.error("Admin check failed", err);
+      } finally {
+        if (!cancelled) setChecking(false);
+      }
+    }
+
+    check();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+
+    try {
+      const res = await fetch("/api/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password }),
+      });
+
+      if (!res.ok) {
+        setError("Incorrect password. Please try again.");
+        return;
+      }
+
+      setIsAdmin(true);
+      setPassword("");
+    } catch (err) {
+      console.error("Admin login error", err);
+      setError("Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // While we’re checking the cookie, don’t flash anything
+  if (checking) return null;
+
+  // Not logged in yet: show password form
+  if (!isAdmin) {
+    return (
+      <section
+        id="admin"
+        className="max-w-md mx-auto my-16 rounded-2xl border bg-white/80 p-6 shadow-sm"
+      >
+        <h2 className="text-lg font-semibold mb-2">Admin sign-in</h2>
+        <p className="text-sm text-neutral-600 mb-4">
+          Enter the admin password to edit products and site settings.
+        </p>
+
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <input
+            type="password"
+            className="w-full rounded-md border px-3 py-2 text-sm"
+            style={{ borderColor: "#e5e5e5" }}
+            placeholder="Admin password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+
+          {error && (
+            <p className="text-xs text-red-600">
+              {error}
+            </p>
+          )}
+
+          <button
+            type="submit"
+            disabled={loading || !password}
+            className="w-full rounded-md px-3 py-2 text-sm font-medium text-white disabled:opacity-60"
+            style={{ background: "#b76779" }}
+          >
+            {loading ? "Checking…" : "Enter admin mode"}
+          </button>
+        </form>
+      </section>
+    );
+  }
+
+  // Logged in: render your existing admin panel
+  return <AdminPanel />;
+}
 
   /** ===== Admin Panel ===== */
   function AdminPanel() {
@@ -1134,7 +1239,7 @@ const TikTokIcon = () => (
 
 
       {/* ADMIN */}
-      <AdminPanel />
+      <AdminGate />
 
       {/* CONTENT */}
       {cfg.order.map((id) => {
