@@ -153,7 +153,7 @@ const grandTotal = cartSubtotal + shipping + tax;
 
   /** Admin from URL (SSR-safe) */
   const searchParams = useSearchParams();
-  const admin = searchParams.get("admin") === "1";
+  const showAdmin = searchParams.get("admingate") === "1";
 
   
 
@@ -813,7 +813,7 @@ function AdminGate() {
 
   /** ===== Admin Panel ===== */
   function AdminPanel() {
-    if (!admin) return null;
+    if (!showAdmin) return null;
 
     return (
       <div className="sticky top-14 z-20 bg-white/95 backdrop-blur border-b" style={{ borderColor: "#e5e5e5" }}>
@@ -1270,8 +1270,12 @@ function AdminGate() {
 
 
       {/* ADMIN */}
+      {showAdmin && (
+        <>
       <AdminGate />
               <AdminPanel />
+              </>
+      )}
       
 
       {/* CONTENT */}
