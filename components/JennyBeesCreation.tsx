@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { useCart } from "./cart/CartContext";
 import CartDrawer from "./cart/CartDrawer";
 import  { Facebook } from "lucide-react";
+import AdminGate from "./AdminGate:";
 
 /** ===== THEME ===== */
 const theme = {
@@ -1269,7 +1270,9 @@ function AdminGate() {
 
 
       {/* ADMIN */}
-      <AdminGate />
+      <AdminGate>
+              <AdminPanel />
+      </AdminGate>
 
       {/* CONTENT */}
       {cfg.order.map((id) => {
