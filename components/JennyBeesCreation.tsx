@@ -1270,9 +1270,9 @@ function AdminGate() {
 
 
       {/* ADMIN */}
-      <AdminGate>
+      <AdminGate />
               <AdminPanel />
-      </AdminGate>
+      
 
       {/* CONTENT */}
       {cfg.order.map((id) => {
