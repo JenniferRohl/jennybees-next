@@ -456,7 +456,7 @@ async function shrinkImageIfNeeded(file: File, opts?: { maxSide?: number; qualit
 
           {/* RIGHT: Main hero image */}
           <div className="relative">
-            <div className="aspect-[4/5] rounded-3xl overflow-hidden shadow-2xl ring-1 ring-black/5 bg-white">
+            <div className="aspect-video rounded-3xl overflow-hidden shadow-2xl ring-1 ring-black/5 bg-white">
               <img
                 src={normalizeUrl(cfg.hero.img)}
                 alt="Jen's candles hero"
