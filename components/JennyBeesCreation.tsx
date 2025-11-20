@@ -417,12 +417,12 @@ async function shrinkImageIfNeeded(file: File, opts?: { maxSide?: number; qualit
   <img
     src={normalizeUrl(decor.img)}
     alt="Decor"
-    className={`${decor.shape === "circle" ? "rounded-full" : "rounded-3xl"} absolute shadow-lg border border-white/40`}
+    className={`${decor.shape === "circle" ? "rounded-full" : "rounded-3xl"} absolute shadow-lg border border-white/40 md:w-[180px]md:h-[10px]`}
     style={{
-      width: decor.size,
-      height: decor.size,
-      top: 0,
-      right: 0,
+      width: "120px",
+      height: "120px",
+      top: "-10%",
+      right: "-5%",
       // small tweak so it hugs the corner nicely:
       transform: "translate(-15%, 20%)",
       objectFit: "cover",
