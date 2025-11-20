@@ -414,22 +414,25 @@ async function shrinkImageIfNeeded(file: File, opts?: { maxSide?: number; qualit
           {/* LEFT: Text + optional decor image */}
           <div className="relative">
             {decor.visible && decor.img && (
-              <img
-                src={normalizeUrl(decor.img)}
-                alt="Decor"
-                className={`${decor.shape === "circle" ? "rounded-full" : "rounded-3xl"} ring-4 ring-white shadow-xl absolute`}
-                style={{
-                  width: decor.size,
-                  height: decor.size,
-                  transform: `translate(${decor.x}px, ${decor.y}px)`,
-                  left: 0,
-                  top: 0,
-                  objectFit: "cover",
-                  imageRendering: "auto",
-                }}
-                onError={(e) => { (e.currentTarget as HTMLImageElement).src = "/placeholder.png"; }}
-              />
-            )}
+  <img
+    src={normalizeUrl(decor.img)}
+    alt="Decor"
+    className={`${decor.shape === "circle" ? "rounded-full" : "rounded-3xl"} absolute shadow-lg border border-white/40`}
+    style={{
+      width: decor.size,
+      height: decor.size,
+      top: 0,
+      right: 0,
+      // small tweak so it hugs the corner nicely:
+      transform: "translate(-15%, 20%)",
+      objectFit: "cover",
+      imageRendering: "auto",
+    }}
+    onError={(e) => {
+      (e.currentTarget as HTMLImageElement).src = "/placeholder.png";
+    }}
+  />
+)}
 
             <h1 className="relative text-4xl md:text-5xl font-light leading-tight tracking-tight capitalize bg-gradient-to-br from-[#d4a5a5] via-[#b87979] to-[#805050] bg-clip-text text-transparent">
               {cfg.hero.heading}
