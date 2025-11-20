@@ -460,7 +460,7 @@ async function shrinkImageIfNeeded(file: File, opts?: { maxSide?: number; qualit
               <img
                 src={normalizeUrl(cfg.hero.img)}
                 alt="Jen's candles hero"
-                className="h-full w-full object-cover"
+                className="h-full w-full object-cover object-center"
                 style={{ imageRendering: "auto" }}
                 onError={(e) => { (e.currentTarget as HTMLImageElement).src = "/placeholder.png"; }}
               />
